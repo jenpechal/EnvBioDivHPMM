@@ -1,0 +1,1159 @@
+---
+title: "HPMM_STOTEN_Ranalysis"
+author: "J Pechal"
+date: "6/2/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## STOTEN Analysis
+
+Question: Does the human postmortem microbiome predict greenness indicators?
+
+Data: SILVA132, QIIME2019.7, Less 48 PMI estimate; each sample area is separate (mouth, nose, rectum)
+
+```{r libraries}
+library(ggplot2)
+library(vegan)
+library(ggfortify)
+library(tidyr)
+library(dplyr)
+library(viridis)
+```
+
+# Figures S1 & S2
+
+Upload data
+
+```{r}
+setwd("~/Desktop/HPMM_STOTEN")
+mouth_feature_table<-read.delim("mouth_feature_table.txt", h=T)
+nose_feature_table<-read.delim("nose_feature_table.txt", h=T)
+rectum_feature_table<-read.delim("rectum_feature_table.txt", h=T)
+```
+
+Identify the 400 random ASVs for each anatomic site.
+
+```{r}
+set.seed(3984)
+mouth_feature_table_random<-sample_n(mouth_feature_table, 400)
+write.csv(mouth_feature_table_random, "mouth_feature_table_random.csv")
+
+set.seed(8793)
+nose_feature_table_random<-sample_n(nose_feature_table, 400)
+write.csv(nose_feature_table_random, "nose_feature_table_random.csv")
+
+set.seed(0984)
+rectum_feature_table_random<-sample_n(rectum_feature_table, 400)
+write.csv(rectum_feature_table_random, "rectum_feature_table_random.csv")
+```
+
+Verify table in excel, add taxonomy, and merge ASVs based on Order level classifications Upload clean tables.
+
+```{r}
+mouth_feature_table_asv_random<-read.csv("mouth_feature_table_asv_random.csv", h=T)
+nose_feature_table_asv_random<-read.csv("nose_feature_table_asv_random.csv", h=T)
+rectum_feature_table_asv_random<-read.csv("rectum_feature_table_asv_random.csv", h=T)
+```
+
+Convert tables from wide to long.
+
+```{r}
+names(mouth_feature_table_asv_random)
+mouth_feature_table_asv_random_long<- gather(mouth_feature_table_asv_random, Order, RelAbund, Absconditabacteriales_SR1_RA:Unassigned_RA, factor_key=TRUE)
+write.csv(mouth_feature_table_asv_random_long, "mouth_feature_table_asv_random_long.csv")
+
+mouth_feature_table_asv_random_long$Season <- factor(mouth_feature_table_asv_random_long$Season, levels = c("Spring", "Summer", "Autumn", "Winter"))
+mouth_feature_table_asv_random_long$BMI <- as.numeric(mouth_feature_table_asv_random_long$BMI)
+
+names(nose_feature_table_asv_random)
+nose_feature_table_asv_random_long <- gather(nose_feature_table_asv_random, Order, RelAbund, Absconditabacteriales_SR1_RA:Unassigned_RA, factor_key=TRUE)
+write.csv(nose_feature_table_asv_random_long, "nose_feature_table_asv_random_long.csv")
+
+nose_feature_table_asv_random_long$Season <- factor(nose_feature_table_asv_random_long$Season, levels = c("Spring", "Summer", "Autumn", "Winter"))
+nose_feature_table_asv_random_long$BMI <- as.numeric(nose_feature_table_asv_random_long$BMI)
+
+names(rectum_feature_table_asv_random)
+rectum_feature_table_asv_random_long <- gather(rectum_feature_table_asv_random, Order, RelAbund, Actinomycetales_RA:Unassigned_RA, factor_key=TRUE)
+write.csv(rectum_feature_table_asv_random_long, "rectum_feature_table_asv_random_long.csv")
+
+rectum_feature_table_asv_random_long$Season <- factor(rectum_feature_table_asv_random_long$Season, levels = c("Spring", "Summer", "Autumn", "Winter"))
+rectum_feature_table_asv_random_long$BMI <- as.numeric(rectum_feature_table_asv_random_long$BMI)
+```
+
+Mouth Samples: Plot order level taxonomy against the ndvi_m_100m & ndvi_sd_100m.
+
+```{r}
+mouth_feature_table_asv_random_long_ndvi_100_m<-ggplot() + geom_bar(aes(y = RelAbund, x = reorder(Pack_ID, ndvi_m_100m), fill = Order), data = mouth_feature_table_asv_random_long, stat="identity") +
+    theme_classic() +
+    labs(y= "Relative Abundance", x = "Samples") + 
+    theme(legend.text = element_text(size = 5), axis.text.x=element_blank(),       legend.key.size = unit(0.4, "cm"), legend.position = "bottom", axis.ticks.x=element_blank()) + 
+    scale_fill_viridis(discrete = T)
+ggsave("mouth_feature_table_asv_random_long_ndvi_100_m.tiff", mouth_feature_table_asv_random_long_ndvi_100_m, height=5, width=7, units='in', dpi=300)
+    
+mouth_feature_table_asv_random_long_ndvi_100_sd<-ggplot() + geom_bar(aes(y = RelAbund, x = reorder(Pack_ID, ndvi_sd_100m), fill = Order), data = mouth_feature_table_asv_random_long, stat="identity") +
+    theme_classic() +
+    labs(y= "Relative Abundance", x = "Samples") + 
+    theme(legend.text = element_text(size = 5), axis.text.x=element_blank(),       legend.key.size = unit(0.4, "cm"), legend.position = "bottom", axis.ticks.x=element_blank()) + 
+    scale_fill_viridis(discrete = T)
+ggsave("mouth_feature_table_asv_random_long_ndvi_100_sd.tiff", mouth_feature_table_asv_random_long_ndvi_100_sd, height=5, width=7, units='in', dpi=300)
+```
+
+Nose Samples: Plot order level taxonomy against the ndvi_m_100m & ndvi_sd_100m.
+
+```{r}
+nose_feature_table_asv_random_long_ndvi_100_m<-ggplot() + geom_bar(aes(y = RelAbund, x = reorder(Pack_ID, ndvi_m_100m), fill = Order), data = nose_feature_table_asv_random_long, stat="identity") +
+    theme_classic() +
+    labs(y= "Relative Abundance", x = "Samples") + 
+    theme(legend.text = element_text(size = 5), axis.text.x=element_blank(),       legend.key.size = unit(0.4, "cm"), legend.position = "bottom", axis.ticks.x=element_blank()) + 
+    scale_fill_viridis(discrete = T)
+ggsave("nose_feature_table_asv_random_long_ndvi_100_m.tiff", nose_feature_table_asv_random_long_ndvi_100_m, height=5, width=7, units='in', dpi=300)
+    
+nose_feature_table_asv_random_long_ndvi_100_sd<-ggplot() + geom_bar(aes(y = RelAbund, x = reorder(Pack_ID, ndvi_sd_100m), fill = Order), data = nose_feature_table_asv_random_long, stat="identity") +
+    theme_classic() +
+    labs(y= "Relative Abundance", x = "Samples") + 
+    theme(legend.text = element_text(size = 5), axis.text.x=element_blank(),       legend.key.size = unit(0.4, "cm"), legend.position = "bottom", axis.ticks.x=element_blank()) + 
+    scale_fill_viridis(discrete = T)
+ggsave("nose_feature_table_asv_random_long_ndvi_100_sd.tiff", nose_feature_table_asv_random_long_ndvi_100_sd, height=5, width=7, units='in', dpi=300)
+```
+
+Rectum Samples: Plot order level taxonomy against the ndvi_m_100m & ndvi_sd_100m.
+
+```{r}
+rectum_feature_table_asv_random_long_ndvi_100_m<-ggplot() + geom_bar(aes(y = RelAbund, x = reorder(Pack_ID, ndvi_m_100m), fill = Order), data = rectum_feature_table_asv_random_long, stat="identity") +
+    theme_classic() +
+    labs(y= "Relative Abundance", x = "Samples") + 
+    theme(legend.text = element_text(size = 5), axis.text.x=element_blank(),       legend.key.size = unit(0.4, "cm"), legend.position = "bottom", axis.ticks.x=element_blank()) + 
+    scale_fill_viridis(discrete = T)
+ggsave("rectum_feature_table_asv_random_long_ndvi_100_m.tiff", rectum_feature_table_asv_random_long_ndvi_100_m, height=5, width=7, units='in', dpi=300)
+    
+rectum_feature_table_asv_random_long_ndvi_100_sd<-ggplot() + geom_bar(aes(y = RelAbund, x = reorder(Pack_ID, ndvi_sd_100m), fill = Order), data = rectum_feature_table_asv_random_long, stat="identity") +
+    theme_classic() +
+    labs(y= "Relative Abundance", x = "Samples") + 
+    theme(legend.text = element_text(size = 5), axis.text.x=element_blank(),       legend.key.size = unit(0.4, "cm"), legend.position = "bottom", axis.ticks.x=element_blank()) + 
+    scale_fill_viridis(discrete = T)
+ggsave("rectum_feature_table_asv_random_long_ndvi_100_sd.tiff", rectum_feature_table_asv_random_long_ndvi_100_sd, height=5, width=7, units='in', dpi=300)
+```
+
+## Figures S3 - S14.
+
+Plot taxon of interest at the order level (>=90% frequency across samples or >=10% total relative abundance) for each anatomic site
+
+Upload data
+
+```{r}
+mouth_freq_order<-read.delim("mouth_freq_order.txt", h=T)
+nose_freq_order<-read.delim("nose_freq_order.txt", h=T)
+rectum_freq_order<-read.delim("rectum_freq_order.txt", h=T)
+
+mouth_abund_order<-read.delim("mouth_abund_order.txt", h=T)
+nose_abund_order<-read.delim("nose_abund_order.txt", h=T)
+rectum_abund_order<-read.delim("rectum_abund_order.txt", h=T)
+```
+
+Convert data from wide to long
+
+```{r}
+names(mouth_freq_order)
+mouth_freq_order_long <- gather(mouth_freq_order, Order, Count, Lactobacillales:Fusobacteriales, factor_key=TRUE)
+write.csv(mouth_freq_order_long, "mouth_freq_order_long.csv")
+mouth_freq_order_long$Season <- factor(mouth_freq_order_long$Season, levels = c("Spring", "Summer", "Autumn", "Winter"))
+mouth_freq_order_long$BMI <- as.numeric(mouth_freq_order_long$BMI)
+
+names(nose_freq_order)
+nose_freq_order_long <- gather(nose_freq_order, Order, Count, Bacillales:Bacteroidales, factor_key=TRUE)
+write.csv(nose_freq_order_long, "nose_freq_order_long.csv")
+nose_freq_order$Season <- factor(nose_freq_order$Season, levels = c("Spring", "Summer", "Autumn", "Winter"))
+nose_freq_order$BMI <- as.numeric(nose_freq_order$BMI)
+
+names(rectum_freq_order)
+rectum_freq_order_long <- gather(rectum_freq_order, Order, Count, Bacteroidales:Selenomonadales, factor_key=TRUE)
+write.csv(rectum_freq_order_long, "rectum_freq_order_long.csv")
+rectum_freq_order_long$Season <- factor(rectum_freq_order_long$Season, levels = c("Spring", "Summer", "Autumn", "Winter"))
+rectum_freq_order_long$BMI <- as.numeric(rectum_freq_order_long$BMI)
+
+names(mouth_abund_order)
+mouth_abund_order_long <- gather(mouth_abund_order, Order, Count, Lactobacillales:Selenomonadales, factor_key=TRUE)
+write.csv(mouth_abund_order_long, "mouth_abund_order_long.csv")
+mouth_abund_order_long$Season <- factor(mouth_abund_order_long$Season, levels = c("Spring", "Summer", "Autumn", "Winter"))
+mouth_abund_order_long$BMI <- as.numeric(mouth_abund_order_long$BMI)
+
+names(nose_abund_order)
+nose_abund_order_long <- gather(nose_abund_order, Order, Count, Lactobacillales:Bacillales, factor_key=TRUE)
+write.csv(nose_abund_order_long, "nose_abund_order_long.csv")
+nose_abund_order_long$Season <- factor(nose_abund_order_long$Season, levels = c("Spring", "Summer", "Autumn", "Winter"))
+nose_abund_order_long$BMI <- as.numeric(nose_abund_order_long$BMI)
+
+names(rectum_abund_order)
+rectum_abund_order_long <- gather(rectum_abund_order, Order, Count, Clostridiales:Bacteroidales, factor_key=TRUE)
+write.csv(rectum_abund_order_long, "rectum_abund_order_long.csv")
+rectum_abund_order_long$Season <- factor(rectum_abund_order$Season, levels = c("Spring", "Summer", "Autumn", "Winter"))
+rectum_abund_order_long$BMI <- as.numeric(rectum_abund_order$BMI)
+```
+
+Plot the order level data on a Log(Taxon +1) scale for the most abundant and most frequent taxon, for each anatomic site against metadata of interest [sex, race, season, manner of death (mod), age, body mass index (bmi)]
+
+Mouth Samples & Frequency Data & ndvi_m_100m
+
+```{r}
+mouth_freq_order_long.sex_log<-ggplot(mouth_freq_order_long, aes(x = ndvi_m_100m, y = log(Count+1), colour = Sex, shape = Sex)) +
+      facet_wrap(~Order, nrow=2, scales = "free") +  
+      geom_point(alpha = 0.6, size =3) +
+      geom_smooth(method = "lm", se = FALSE, fill= NA, cex=0.5) +
+      theme_classic() +
+      labs(y= "Log(Taxon Count + 1)") +
+      scale_colour_manual(values = c("black", "darkgray")) +
+      theme(legend.position = "bottom",
+            panel.spacing = unit(2, "lines"))
+ggsave("mouth_freq_order_long.sex_log.tiff", mouth_freq_order_long.sex_log, height=5, width=7, units='in', dpi=300)
+
+mouth_freq_order_long.race_log<-ggplot(mouth_freq_order_long, aes(x = ndvi_m_100m, y = log(Count+1), colour = Race, shape = Race)) +
+      facet_wrap(~Order, nrow=2, scales = "free") +  
+      geom_point(alpha = 0.6, size =3) +
+      geom_smooth(method = "lm", se = FALSE, fill= NA, cex=0.5) +
+      theme_classic() +
+      labs(y= "Log(Taxon Count + 1)") +
+      scale_colour_manual(values = c("orange", "darkred")) +
+      scale_shape_manual(values=c(18, 15)) +
+      theme(legend.position = "bottom",
+            panel.spacing = unit(2, "lines"))
+ggsave("mouth_freq_order_long.race_log.tiff", mouth_freq_order_long.race_log, height=5, width=7, units='in', dpi=300)
+
+mouth_freq_order_long.season_log<-ggplot(mouth_freq_order_long, aes(x = ndvi_m_100m, y = log(Count+1), colour = Season, shape = Season)) +
+      facet_wrap(~Order, nrow=2, scales = "free") +  
+      geom_point(alpha = 0.6, size =3) +
+      geom_smooth(method = "lm", se = FALSE, fill= NA, cex=0.5) +
+      theme_classic() +
+      labs(y= "Log(Taxon Count + 1)") +
+      scale_colour_manual(values = c("green", "yellow", "red", "blue")) +
+      scale_shape_manual(values=c(18, 15, 6, 8)) +
+      theme(legend.position = "bottom",
+            panel.spacing = unit(2, "lines"))
+ggsave("mouth_freq_order_long.season_log.tiff", mouth_freq_order_long.season_log, height=5, width=7, units='in', dpi=300)
+
+mouth_freq_order_long.mod_log<-ggplot(mouth_freq_order_long, aes(x = ndvi_m_100m, y = log(Count+1), colour = MoD, shape = MoD)) +
+      facet_wrap(~Order, nrow=2, scales = "free") +  
+      geom_point(alpha = 0.6, size =3) +
+      geom_smooth(method = "lm", se = FALSE, fill= NA, cex=0.5) +
+      theme_classic() +
+      labs(y= "Log(Taxon Count + 1)") +
+      scale_colour_manual(values = c("#7b3294", "#af8dc3", "#7fbf7b", "#1b7837")) +
+      scale_shape_manual(values=c(15, 16, 17, 18)) +
+      theme(legend.position = "bottom",
+            panel.spacing = unit(2, "lines"))
+ggsave("mouth_freq_order_long.mod_log.tiff", mouth_freq_order_long.mod_log, height=5, width=7, units='in', dpi=300)
+
+mouth_freq_order_long.age_log<-ggplot(mouth_freq_order_long, aes(x = ndvi_m_100m, y = log(Count+1), colour = Age)) +
+      facet_wrap(~Order, nrow=2, scales = "free") +  
+      geom_point(alpha = 0.6, size =3) +
+      geom_smooth(method = "lm", se = FALSE, fill= NA, cex=0.5) +
+      theme_classic() +
+      labs(y= "Log(Taxon Count + 1)") +
+      scale_colour_gradient(low = "#b28aff", high = "#00043e") +
+      theme(legend.position = "bottom",
+            panel.spacing = unit(2, "lines"))
+ggsave("mouth_freq_order_long.age_log.tiff", mouth_freq_order_long.age_log, height=5, width=7, units='in', dpi=300)
+
+mouth_freq_order_long.bmi_log<-ggplot(mouth_freq_order_long, aes(x = ndvi_m_100m, y = log(Count+1), colour = BMI)) +
+      facet_wrap(~Order, nrow=2, scales = "free") +  
+      geom_point(alpha = 0.6, size =3) +
+      geom_smooth(method = "lm", se = FALSE, fill= NA, cex=0.5) +
+      theme_classic() +
+      labs(y= "Log(Taxon Count + 1)") +
+      scale_colour_gradient(low = "#00d2ff", high = "#000b42") +
+      theme(legend.position = "bottom",
+            panel.spacing = unit(2, "lines"))
+ggsave("mouth_freq_order_long.bmi_log.tiff", mouth_freq_order_long.bmi_log, height=5, width=7, units='in', dpi=300)
+```
+
+Nose Samples & Frequency Data & ndvi_m_100m
+
+```{r}
+nose_freq_order_long.sex_log<-ggplot(nose_freq_order_long, aes(x = ndvi_m_100m, y = log(Count+1), colour = Sex, shape = Sex)) +
+      facet_wrap(~Order, nrow=2, scales = "free") +  
+      geom_point(alpha = 0.6, size =3) +
+      geom_smooth(method = "lm", se = FALSE, fill= NA, cex=0.5) +
+      theme_classic() +
+      labs(y= "Log(Taxon Count + 1)") +
+      scale_colour_manual(values = c("black", "darkgray")) +
+      theme(legend.position = "bottom",
+            panel.spacing = unit(2, "lines"))
+ggsave("nose_freq_order_long.sex_log.tiff", nose_freq_order_long.sex_log, height=5, width=7, units='in', dpi=300)
+
+nose_freq_order_long.race_log<-ggplot(nose_freq_order_long, aes(x = ndvi_m_100m, y = log(Count+1), colour = Race, shape = Race)) +
+      facet_wrap(~Order, nrow=2, scales = "free") +  
+      geom_point(alpha = 0.6, size =3) +
+      geom_smooth(method = "lm", se = FALSE, fill= NA, cex=0.5) +
+      theme_classic() +
+      labs(y= "Log(Taxon Count + 1)") +
+      scale_colour_manual(values = c("orange", "darkred")) +
+      scale_shape_manual(values=c(18, 15)) +
+      theme(legend.position = "bottom",
+            panel.spacing = unit(2, "lines"))
+ggsave("nose_freq_order_long.race_log.tiff", nose_freq_order_long.race_log, height=5, width=7, units='in', dpi=300)
+
+nose_freq_order_long.season_log<-ggplot(nose_freq_order_long, aes(x = ndvi_m_100m, y = log(Count+1), colour = Season, shape = Season)) +
+      facet_wrap(~Order, nrow=2, scales = "free") +  
+      geom_point(alpha = 0.6, size =3) +
+      geom_smooth(method = "lm", se = FALSE, fill= NA, cex=0.5) +
+      theme_classic() +
+      labs(y= "Log(Taxon Count + 1)") +
+      scale_colour_manual(values = c("green", "yellow", "red", "blue")) +
+      scale_shape_manual(values=c(18, 15, 6, 8)) +
+      theme(legend.position = "bottom",
+            panel.spacing = unit(2, "lines"))
+ggsave("nose_freq_order_long.season_log.tiff", nose_freq_order_long.season_log, height=5, width=7, units='in', dpi=300)
+
+nose_freq_order_long.mod_log<-ggplot(nose_freq_order_long, aes(x = ndvi_m_100m, y = log(Count+1), colour = MoD, shape = MoD)) +
+      facet_wrap(~Order, nrow=2, scales = "free") +  
+      geom_point(alpha = 0.6, size =3) +
+      geom_smooth(method = "lm", se = FALSE, fill= NA, cex=0.5) +
+      theme_classic() +
+      labs(y= "Log(Taxon Count + 1)") +
+      scale_colour_manual(values = c("#7b3294", "#af8dc3", "#7fbf7b", "#1b7837")) +
+      scale_shape_manual(values=c(15, 16, 17, 18)) +
+      theme(legend.position = "bottom",
+            panel.spacing = unit(2, "lines"))
+ggsave("nose_freq_order_long.mod_log.tiff", nose_freq_order_long.mod_log, height=5, width=7, units='in', dpi=300)
+
+nose_freq_order_long.age_log<-ggplot(nose_freq_order_long, aes(x = ndvi_m_100m, y = log(Count+1), colour = Age)) +
+      facet_wrap(~Order, nrow=2, scales = "free") +  
+      geom_point(alpha = 0.6, size =3) +
+      geom_smooth(method = "lm", se = FALSE, fill= NA, cex=0.5) +
+      theme_classic() +
+      labs(y= "Log(Taxon Count + 1)") +
+      scale_colour_gradient(low = "#b28aff", high = "#00043e") +
+      theme(legend.position = "bottom",
+            panel.spacing = unit(2, "lines"))
+ggsave("nose_freq_order_long.age_log.tiff", nose_freq_order_long.age_log, height=5, width=7, units='in', dpi=300)
+
+nose_freq_order_long.bmi_log<-ggplot(nose_freq_order_long, aes(x = ndvi_m_100m, y = log(Count+1), colour = BMI)) +
+      facet_wrap(~Order, nrow=2, scales = "free") +  
+      geom_point(alpha = 0.6, size =3) +
+      geom_smooth(method = "lm", se = FALSE, fill= NA, cex=0.5) +
+      theme_classic() +
+      labs(y= "Log(Taxon Count + 1)") +
+      scale_colour_gradient(low = "#00d2ff", high = "#000b42") +
+      theme(legend.position = "bottom",
+            panel.spacing = unit(2, "lines"))
+ggsave("nose_freq_order_long.bmi_log.tiff", nose_freq_order_long.bmi_log, height=5, width=7, units='in', dpi=300)
+```
+
+Rectum Samples & Frequency Data & ndvi_m_100m
+
+```{r}
+rectum_freq_order_long.sex_log<-ggplot(rectum_freq_order_long, aes(x = ndvi_m_100m, y = log(Count+1), colour = Sex, shape = Sex)) +
+      facet_wrap(~Order, nrow=2, scales = "free") +  
+      geom_point(alpha = 0.6, size =3) +
+      geom_smooth(method = "lm", se = FALSE, fill= NA, cex=0.5) +
+      theme_classic() +
+      labs(y= "Log(Taxon Count + 1)") +
+      scale_colour_manual(values = c("black", "darkgray")) +
+      theme(legend.position = "bottom",
+            panel.spacing = unit(2, "lines"))
+ggsave("rectum_freq_order_long.sex_log.tiff", rectum_freq_order_long.sex_log, height=5, width=7, units='in', dpi=300)
+
+rectum_freq_order_long.race_log<-ggplot(rectum_freq_order_long, aes(x = ndvi_m_100m, y = log(Count+1), colour = Race, shape = Race)) +
+      facet_wrap(~Order, nrow=2, scales = "free") +  
+      geom_point(alpha = 0.6, size =3) +
+      geom_smooth(method = "lm", se = FALSE, fill= NA, cex=0.5) +
+      theme_classic() +
+      labs(y= "Log(Taxon Count + 1)") +
+      scale_colour_manual(values = c("orange", "darkred")) +
+      scale_shape_manual(values=c(18, 15)) +
+      theme(legend.position = "bottom",
+            panel.spacing = unit(2, "lines"))
+ggsave("rectum_freq_order_long.race_log.tiff", rectum_freq_order_long.race_log, height=5, width=7, units='in', dpi=300)
+
+rectum_freq_order_long.season_log<-ggplot(rectum_freq_order_long, aes(x = ndvi_m_100m, y = log(Count+1), colour = Season, shape = Season)) +
+      facet_wrap(~Order, nrow=2, scales = "free") +  
+      geom_point(alpha = 0.6, size =3) +
+      geom_smooth(method = "lm", se = FALSE, fill= NA, cex=0.5) +
+      theme_classic() +
+      labs(y= "Log(Taxon Count + 1)") +
+      scale_colour_manual(values = c("green", "yellow", "red", "blue")) +
+      scale_shape_manual(values=c(18, 15, 6, 8)) +
+      theme(legend.position = "bottom",
+            panel.spacing = unit(2, "lines"))
+ggsave("rectum_freq_order_long.season_log.tiff", rectum_freq_order_long.season_log, height=5, width=7, units='in', dpi=300)
+
+rectum_freq_order_long.mod_log<-ggplot(rectum_freq_order_long, aes(x = ndvi_m_100m, y = log(Count+1), colour = MoD, shape = MoD)) +
+      facet_wrap(~Order, nrow=2, scales = "free") +  
+      geom_point(alpha = 0.6, size =3) +
+      geom_smooth(method = "lm", se = FALSE, fill= NA, cex=0.5) +
+      theme_classic() +
+      labs(y= "Log(Taxon Count + 1)") +
+      scale_colour_manual(values = c("#7b3294", "#af8dc3", "#7fbf7b", "#1b7837")) +
+      scale_shape_manual(values=c(15, 16, 17, 18)) +
+      theme(legend.position = "bottom",
+            panel.spacing = unit(2, "lines"))
+ggsave("rectum_freq_order_long.mod_log.tiff", rectum_freq_order_long.mod_log, height=5, width=7, units='in', dpi=300)
+
+rectum_freq_order_long.age_log<-ggplot(rectum_freq_order_long, aes(x = ndvi_m_100m, y = log(Count+1), colour = Age)) +
+      facet_wrap(~Order, nrow=2, scales = "free") +  
+      geom_point(alpha = 0.6, size =3) +
+      geom_smooth(method = "lm", se = FALSE, fill= NA, cex=0.5) +
+      theme_classic() +
+      labs(y= "Log(Taxon Count + 1)") +
+      scale_colour_gradient(low = "#b28aff", high = "#00043e") +
+      theme(legend.position = "bottom",
+            panel.spacing = unit(2, "lines"))
+ggsave("rectum_freq_order_long.age_log.tiff", rectum_freq_order_long.age_log, height=5, width=7, units='in', dpi=300)
+
+rectum_freq_order_long.bmi_log<-ggplot(rectum_freq_order_long, aes(x = ndvi_m_100m, y = log(Count+1), colour = BMI)) +
+      facet_wrap(~Order, nrow=2, scales = "free") +  
+      geom_point(alpha = 0.6, size =3) +
+      geom_smooth(method = "lm", se = FALSE, fill= NA, cex=0.5) +
+      theme_classic() +
+      labs(y= "Log(Taxon Count + 1)") +
+      scale_colour_gradient(low = "#00d2ff", high = "#000b42") +
+      theme(legend.position = "bottom",
+            panel.spacing = unit(2, "lines"))
+ggsave("rectum_freq_order_long.bmi_log.tiff", rectum_freq_order_long.bmi_log, height=5, width=7, units='in', dpi=300)
+```
+
+Mouth Samples & Abundance Data & ndvi_m_100m
+
+```{r}
+mouth_abund_order_long.sex_log<-ggplot(mouth_abund_order_long, aes(x = ndvi_m_100m, y = log(Count+1), colour = Sex, shape = Sex)) +
+      facet_wrap(~Order, nrow=2, scales = "free") +  
+      geom_point(alpha = 0.6, size =3) +
+      geom_smooth(method = "lm", se = FALSE, fill= NA, cex=0.5) +
+      theme_classic() +
+      labs(y= "Log(Taxon Count + 1)") +
+      scale_colour_manual(values = c("black", "darkgray")) +
+      theme(legend.position = "bottom",
+            panel.spacing = unit(2, "lines"))
+ggsave("mouth_abund_order_long.sex_log.tiff", mouth_abund_order_long.sex_log, height=5, width=7, units='in', dpi=300)
+
+mouth_abund_order_long.race_log<-ggplot(mouth_abund_order_long, aes(x = ndvi_m_100m, y = log(Count+1), colour = Race, shape = Race)) +
+      facet_wrap(~Order, nrow=2, scales = "free") +  
+      geom_point(alpha = 0.6, size =3) +
+      geom_smooth(method = "lm", se = FALSE, fill= NA, cex=0.5) +
+      theme_classic() +
+      labs(y= "Log(Taxon Count + 1)") +
+      scale_colour_manual(values = c("orange", "darkred")) +
+      scale_shape_manual(values=c(18, 15)) +
+      theme(legend.position = "bottom",
+            panel.spacing = unit(2, "lines"))
+ggsave("mouth_abund_order_long.race_log.tiff", mouth_abund_order_long.race_log, height=5, width=7, units='in', dpi=300)
+
+mouth_abund_order_long.season_log<-ggplot(mouth_abund_order_long, aes(x = ndvi_m_100m, y = log(Count+1), colour = Season, shape = Season)) +
+      facet_wrap(~Order, nrow=2, scales = "free") +  
+      geom_point(alpha = 0.6, size =3) +
+      geom_smooth(method = "lm", se = FALSE, fill= NA, cex=0.5) +
+      theme_classic() +
+      labs(y= "Log(Taxon Count + 1)") +
+      scale_colour_manual(values = c("green", "yellow", "red", "blue")) +
+      scale_shape_manual(values=c(18, 15, 6, 8)) +
+      theme(legend.position = "bottom",
+            panel.spacing = unit(2, "lines"))
+ggsave("mouth_abund_order_long.season_log.tiff", mouth_abund_order_long.season_log, height=5, width=7, units='in', dpi=300)
+
+mouth_abund_order_long.mod_log<-ggplot(mouth_abund_order_long, aes(x = ndvi_m_100m, y = log(Count+1), colour = MoD, shape = MoD)) +
+      facet_wrap(~Order, nrow=2, scales = "free") +  
+      geom_point(alpha = 0.6, size =3) +
+      geom_smooth(method = "lm", se = FALSE, fill= NA, cex=0.5) +
+      theme_classic() +
+      labs(y= "Log(Taxon Count + 1)") +
+      scale_colour_manual(values = c("#7b3294", "#af8dc3", "#7fbf7b", "#1b7837")) +
+      scale_shape_manual(values=c(15, 16, 17, 18)) +
+      theme(legend.position = "bottom",
+            panel.spacing = unit(2, "lines"))
+ggsave("mouth_abund_order_long.mod_log.tiff", mouth_abund_order_long.mod_log, height=5, width=7, units='in', dpi=300)
+
+mouth_abund_order_long.age_log<-ggplot(mouth_abund_order_long, aes(x = ndvi_m_100m, y = log(Count+1), colour = Age)) +
+      facet_wrap(~Order, nrow=2, scales = "free") +  
+      geom_point(alpha = 0.6, size =3) +
+      geom_smooth(method = "lm", se = FALSE, fill= NA, cex=0.5) +
+      theme_classic() +
+      labs(y= "Log(Taxon Count + 1)") +
+      scale_colour_gradient(low = "#b28aff", high = "#00043e") +
+      theme(legend.position = "bottom",
+            panel.spacing = unit(2, "lines"))
+ggsave("mouth_abund_order_long.age_log.tiff", mouth_abund_order_long.age_log, height=5, width=7, units='in', dpi=300)
+
+mouth_abund_order_long.bmi_log<-ggplot(mouth_abund_order_long, aes(x = ndvi_m_100m, y = log(Count+1), colour = BMI)) +
+      facet_wrap(~Order, nrow=2, scales = "free") +  
+      geom_point(alpha = 0.6, size =3) +
+      geom_smooth(method = "lm", se = FALSE, fill= NA, cex=0.5) +
+      theme_classic() +
+      labs(y= "Log(Taxon Count + 1)") +
+      scale_colour_gradient(low = "#00d2ff", high = "#000b42") +
+      theme(legend.position = "bottom",
+            panel.spacing = unit(2, "lines"))
+ggsave("mouth_abund_order_long.bmi_log.tiff", mouth_abund_order_long.bmi_log, height=5, width=7, units='in', dpi=300)
+```
+
+Nose Samples & Abundance Data & ndvi_m_100m
+
+```{r}
+nose_abund_order_long.sex_log<-ggplot(nose_abund_order_long, aes(x = ndvi_m_100m, y = log(Count+1), colour = Sex, shape = Sex)) +
+      facet_wrap(~Order, nrow=2, scales = "free") +  
+      geom_point(alpha = 0.6, size =3) +
+      geom_smooth(method = "lm", se = FALSE, fill= NA, cex=0.5) +
+      theme_classic() +
+      labs(y= "Log(Taxon Count + 1)") +
+      scale_colour_manual(values = c("black", "darkgray")) +
+      theme(legend.position = "bottom",
+            panel.spacing = unit(2, "lines"))
+ggsave("nose_abund_order_long.sex_log.tiff", nose_abund_order_long.sex_log, height=5, width=7, units='in', dpi=300)
+
+nose_abund_order_long.race_log<-ggplot(nose_abund_order_long, aes(x = ndvi_m_100m, y = log(Count+1), colour = Race, shape = Race)) +
+      facet_wrap(~Order, nrow=2, scales = "free") +  
+      geom_point(alpha = 0.6, size =3) +
+      geom_smooth(method = "lm", se = FALSE, fill= NA, cex=0.5) +
+      theme_classic() +
+      labs(y= "Log(Taxon Count + 1)") +
+      scale_colour_manual(values = c("orange", "darkred")) +
+      scale_shape_manual(values=c(18, 15)) +
+      theme(legend.position = "bottom",
+            panel.spacing = unit(2, "lines"))
+ggsave("nose_abund_order_long.race_log.tiff", nose_abund_order_long.race_log, height=5, width=7, units='in', dpi=300)
+
+nose_abund_order_long.season_log<-ggplot(nose_abund_order_long, aes(x = ndvi_m_100m, y = log(Count+1), colour = Season, shape = Season)) +
+      facet_wrap(~Order, nrow=2, scales = "free") +  
+      geom_point(alpha = 0.6, size =3) +
+      geom_smooth(method = "lm", se = FALSE, fill= NA, cex=0.5) +
+      theme_classic() +
+      labs(y= "Log(Taxon Count + 1)") +
+      scale_colour_manual(values = c("green", "yellow", "red", "blue")) +
+      scale_shape_manual(values=c(18, 15, 6, 8)) +
+      theme(legend.position = "bottom",
+            panel.spacing = unit(2, "lines"))
+ggsave("nose_abund_order_long.season_log.tiff", nose_abund_order_long.season_log, height=5, width=7, units='in', dpi=300)
+
+nose_abund_order_long.mod_log<-ggplot(nose_abund_order_long, aes(x = ndvi_m_100m, y = log(Count+1), colour = MoD, shape = MoD)) +
+      facet_wrap(~Order, nrow=2, scales = "free") +  
+      geom_point(alpha = 0.6, size =3) +
+      geom_smooth(method = "lm", se = FALSE, fill= NA, cex=0.5) +
+      theme_classic() +
+      labs(y= "Log(Taxon Count + 1)") +
+      scale_colour_manual(values = c("#7b3294", "#af8dc3", "#7fbf7b", "#1b7837")) +
+      scale_shape_manual(values=c(15, 16, 17, 18)) +
+      theme(legend.position = "bottom",
+            panel.spacing = unit(2, "lines"))
+ggsave("nose_abund_order_long.mod_log.tiff", nose_abund_order_long.mod_log, height=5, width=7, units='in', dpi=300)
+
+nose_abund_order_long.age_log<-ggplot(nose_abund_order_long, aes(x = ndvi_m_100m, y = log(Count+1), colour = Age)) +
+      facet_wrap(~Order, nrow=2, scales = "free") +  
+      geom_point(alpha = 0.6, size =3) +
+      geom_smooth(method = "lm", se = FALSE, fill= NA, cex=0.5) +
+      theme_classic() +
+      labs(y= "Log(Taxon Count + 1)") +
+      scale_colour_gradient(low = "#b28aff", high = "#00043e") +
+      theme(legend.position = "bottom",
+            panel.spacing = unit(2, "lines"))
+ggsave("nose_abund_order_long.age_log.tiff", nose_abund_order_long.age_log, height=5, width=7, units='in', dpi=300)
+
+nose_abund_order_long.bmi_log<-ggplot(nose_abund_order_long, aes(x = ndvi_m_100m, y = log(Count+1), colour = BMI)) +
+      facet_wrap(~Order, nrow=2, scales = "free") +  
+      geom_point(alpha = 0.6, size =3) +
+      geom_smooth(method = "lm", se = FALSE, fill= NA, cex=0.5) +
+      theme_classic() +
+      labs(y= "Log(Taxon Count + 1)") +
+      scale_colour_gradient(low = "#00d2ff", high = "#000b42") +
+      theme(legend.position = "bottom",
+            panel.spacing = unit(2, "lines"))
+ggsave("nose_abund_order_long.bmi_log.tiff", nose_abund_order_long.bmi_log, height=5, width=7, units='in', dpi=300)
+```
+
+Rectum Samples & Abundance Data & ndvi_m_100m
+
+```{r}
+rectum_abund_order_long.sex_log<-ggplot(rectum_abund_order_long, aes(x = ndvi_m_100m, y = log(Count+1), colour = Sex, shape = Sex)) +
+      facet_wrap(~Order, nrow=2, scales = "free") +  
+      geom_point(alpha = 0.6, size =3) +
+      geom_smooth(method = "lm", se = FALSE, fill= NA, cex=0.5) +
+      theme_classic() +
+      labs(y= "Log(Taxon Count + 1)") +
+      scale_colour_manual(values = c("black", "darkgray")) +
+      theme(legend.position = "bottom",
+            panel.spacing = unit(2, "lines"))
+ggsave("rectum_abund_order_long.sex_log.tiff", rectum_abund_order_long.sex_log, height=5, width=7, units='in', dpi=300)
+
+rectum_abund_order_long.race_log<-ggplot(rectum_abund_order_long, aes(x = ndvi_m_100m, y = log(Count+1), colour = Race, shape = Race)) +
+      facet_wrap(~Order, nrow=2, scales = "free") +  
+      geom_point(alpha = 0.6, size =3) +
+      geom_smooth(method = "lm", se = FALSE, fill= NA, cex=0.5) +
+      theme_classic() +
+      labs(y= "Log(Taxon Count + 1)") +
+      scale_colour_manual(values = c("orange", "darkred")) +
+      scale_shape_manual(values=c(18, 15)) +
+      theme(legend.position = "bottom",
+            panel.spacing = unit(2, "lines"))
+ggsave("rectum_abund_order_long.race_log.tiff", rectum_abund_order_long.race_log, height=5, width=7, units='in', dpi=300)
+
+rectum_abund_order_long.season_log<-ggplot(rectum_abund_order_long, aes(x = ndvi_m_100m, y = log(Count+1), colour = Season, shape = Season)) +
+      facet_wrap(~Order, nrow=2, scales = "free") +  
+      geom_point(alpha = 0.6, size =3) +
+      geom_smooth(method = "lm", se = FALSE, fill= NA, cex=0.5) +
+      theme_classic() +
+      labs(y= "Log(Taxon Count + 1)") +
+      scale_colour_manual(values = c("green", "yellow", "red", "blue")) +
+      scale_shape_manual(values=c(18, 15, 6, 8)) +
+      theme(legend.position = "bottom",
+            panel.spacing = unit(2, "lines"))
+ggsave("rectum_abund_order_long.season_log.tiff", rectum_abund_order_long.season_log, height=5, width=7, units='in', dpi=300)
+
+rectum_abund_order_long.mod_log<-ggplot(rectum_abund_order_long, aes(x = ndvi_m_100m, y = log(Count+1), colour = MoD, shape = MoD)) +
+      facet_wrap(~Order, nrow=2, scales = "free") +  
+      geom_point(alpha = 0.6, size =3) +
+      geom_smooth(method = "lm", se = FALSE, fill= NA, cex=0.5) +
+      theme_classic() +
+      labs(y= "Log(Taxon Count + 1)") +
+      scale_colour_manual(values = c("#7b3294", "#af8dc3", "#7fbf7b", "#1b7837")) +
+      scale_shape_manual(values=c(15, 16, 17, 18)) +
+      theme(legend.position = "bottom",
+            panel.spacing = unit(2, "lines"))
+ggsave("rectum_abund_order_long.mod_log.tiff", rectum_abund_order_long.mod_log, height=5, width=7, units='in', dpi=300)
+
+rectum_abund_order_long.age_log<-ggplot(rectum_abund_order_long, aes(x = ndvi_m_100m, y = log(Count+1), colour = Age)) +
+      facet_wrap(~Order, nrow=2, scales = "free") +  
+      geom_point(alpha = 0.6, size =3) +
+      geom_smooth(method = "lm", se = FALSE, fill= NA, cex=0.5) +
+      theme_classic() +
+      labs(y= "Log(Taxon Count + 1)") +
+      scale_colour_gradient(low = "#b28aff", high = "#00043e") +
+      theme(legend.position = "bottom",
+            panel.spacing = unit(2, "lines"))
+ggsave("rectum_abund_order_long.age_log.tiff", rectum_abund_order_long.age_log, height=5, width=7, units='in', dpi=300)
+
+rectum_abund_order_long.bmi_log<-ggplot(rectum_abund_order_long, aes(x = ndvi_m_100m, y = log(Count+1), colour = BMI)) +
+      facet_wrap(~Order, nrow=2, scales = "free") +  
+      geom_point(alpha = 0.6, size =3) +
+      geom_smooth(method = "lm", se = FALSE, fill= NA, cex=0.5) +
+      theme_classic() +
+      labs(y= "Log(Taxon Count + 1)") +
+      scale_colour_gradient(low = "#00d2ff", high = "#000b42") +
+      theme(legend.position = "bottom",
+            panel.spacing = unit(2, "lines"))
+ggsave("rectum_abund_order_long.bmi_log.tiff", rectum_abund_order_long.bmi_log, height=5, width=7, units='in', dpi=300)
+```
+
+Mouth Samples & Frequency Data & ndvi_sd_100m
+
+```{r}
+mouth_freq_order_long.sex_log_100m_sd<-ggplot(mouth_freq_order_long, aes(x = ndvi_sd_100m, y = log(Count+1), colour = Sex, shape = Sex)) +
+      facet_wrap(~Order, nrow=2, scales = "free") +  
+      geom_point(alpha = 0.6, size =3) +
+      geom_smooth(method = "lm", se = FALSE, fill= NA, cex=0.5) +
+      theme_classic() +
+      labs(y= "Log(Taxon Count + 1)") +
+      scale_colour_manual(values = c("black", "darkgray")) +
+      theme(legend.position = "bottom",
+            panel.spacing = unit(2, "lines"))
+ggsave("mouth_freq_order_long.sex_log_100m_sd.tiff", mouth_freq_order_long.sex_log_100m_sd, height=5, width=7, units='in', dpi=300)
+
+mouth_freq_order_long.race_log_100m_sd<-ggplot(mouth_freq_order_long, aes(x = ndvi_sd_100m, y = log(Count+1), colour = Race, shape = Race)) +
+      facet_wrap(~Order, nrow=2, scales = "free") +  
+      geom_point(alpha = 0.6, size =3) +
+      geom_smooth(method = "lm", se = FALSE, fill= NA, cex=0.5) +
+      theme_classic() +
+      labs(y= "Log(Taxon Count + 1)") +
+      scale_colour_manual(values = c("orange", "darkred")) +
+      scale_shape_manual(values=c(18, 15)) +
+      theme(legend.position = "bottom",
+            panel.spacing = unit(2, "lines"))
+ggsave("mouth_freq_order_long.race_log_100m_sd.tiff", mouth_freq_order_long.race_log_100m_sd, height=5, width=7, units='in', dpi=300)
+
+mouth_freq_order_long.season_log_100m_sd<-ggplot(mouth_freq_order_long, aes(x = ndvi_sd_100m, y = log(Count+1), colour = Season, shape = Season)) +
+      facet_wrap(~Order, nrow=2, scales = "free") +  
+      geom_point(alpha = 0.6, size =3) +
+      geom_smooth(method = "lm", se = FALSE, fill= NA, cex=0.5) +
+      theme_classic() +
+      labs(y= "Log(Taxon Count + 1)") +
+      scale_colour_manual(values = c("green", "yellow", "red", "blue")) +
+      scale_shape_manual(values=c(18, 15, 6, 8)) +
+      theme(legend.position = "bottom",
+            panel.spacing = unit(2, "lines"))
+ggsave("mouth_freq_order_long.season_log_100m_sd.tiff", mouth_freq_order_long.season_log_100m_sd, height=5, width=7, units='in', dpi=300)
+
+mouth_freq_order_long.mod_log_100m_sd<-ggplot(mouth_freq_order_long, aes(x = ndvi_sd_100m, y = log(Count+1), colour = MoD, shape = MoD)) +
+      facet_wrap(~Order, nrow=2, scales = "free") +  
+      geom_point(alpha = 0.6, size =3) +
+      geom_smooth(method = "lm", se = FALSE, fill= NA, cex=0.5) +
+      theme_classic() +
+      labs(y= "Log(Taxon Count + 1)") +
+      scale_colour_manual(values = c("#7b3294", "#af8dc3", "#7fbf7b", "#1b7837")) +
+      scale_shape_manual(values=c(15, 16, 17, 18)) +
+      theme(legend.position = "bottom",
+            panel.spacing = unit(2, "lines"))
+ggsave("mouth_freq_order_long.mod_log_100m_sd.tiff", mouth_freq_order_long.mod_log_100m_sd, height=5, width=7, units='in', dpi=300)
+
+mouth_freq_order_long.age_log_100m_sd<-ggplot(mouth_freq_order_long, aes(x = ndvi_sd_100m, y = log(Count+1), colour = Age)) +
+      facet_wrap(~Order, nrow=2, scales = "free") +  
+      geom_point(alpha = 0.6, size =3) +
+      geom_smooth(method = "lm", se = FALSE, fill= NA, cex=0.5) +
+      theme_classic() +
+      labs(y= "Log(Taxon Count + 1)") +
+      scale_colour_gradient(low = "#b28aff", high = "#00043e") +
+      theme(legend.position = "bottom",
+            panel.spacing = unit(2, "lines"))
+ggsave("mouth_freq_order_long.age_log_100m_sd.tiff", mouth_freq_order_long.age_log_100m_sd, height=5, width=7, units='in', dpi=300)
+
+mouth_freq_order_long.bmi_log_100m_sd<-ggplot(mouth_freq_order_long, aes(x = ndvi_sd_100m, y = log(Count+1), colour = BMI)) +
+      facet_wrap(~Order, nrow=2, scales = "free") +  
+      geom_point(alpha = 0.6, size =3) +
+      geom_smooth(method = "lm", se = FALSE, fill= NA, cex=0.5) +
+      theme_classic() +
+      labs(y= "Log(Taxon Count + 1)") +
+      scale_colour_gradient(low = "#00d2ff", high = "#000b42") +
+      theme(legend.position = "bottom",
+            panel.spacing = unit(2, "lines"))
+ggsave("mouth_freq_order_long.bmi_log_100m_sd.tiff", mouth_freq_order_long.bmi_log_100m_sd, height=5, width=7, units='in', dpi=300)
+```
+
+Nose Samples & Frequency Data & ndvi_sd_100m
+
+```{r}
+nose_freq_order_long.sex_log_100m_sd<-ggplot(nose_freq_order_long, aes(x = ndvi_sd_100m, y = log(Count+1), colour = Sex, shape = Sex)) +
+      facet_wrap(~Order, nrow=2, scales = "free") +  
+      geom_point(alpha = 0.6, size =3) +
+      geom_smooth(method = "lm", se = FALSE, fill= NA, cex=0.5) +
+      theme_classic() +
+      labs(y= "Log(Taxon Count + 1)") +
+      scale_colour_manual(values = c("black", "darkgray")) +
+      theme(legend.position = "bottom",
+            panel.spacing = unit(2, "lines"))
+ggsave("nose_freq_order_long.sex_log_100m_sd.tiff", nose_freq_order_long.sex_log_100m_sd, height=5, width=7, units='in', dpi=300)
+
+nose_freq_order_long.race_log_100m_sd<-ggplot(nose_freq_order_long, aes(x = ndvi_sd_100m, y = log(Count+1), colour = Race, shape = Race)) +
+      facet_wrap(~Order, nrow=2, scales = "free") +  
+      geom_point(alpha = 0.6, size =3) +
+      geom_smooth(method = "lm", se = FALSE, fill= NA, cex=0.5) +
+      theme_classic() +
+      labs(y= "Log(Taxon Count + 1)") +
+      scale_colour_manual(values = c("orange", "darkred")) +
+      scale_shape_manual(values=c(18, 15)) +
+      theme(legend.position = "bottom",
+            panel.spacing = unit(2, "lines"))
+ggsave("nose_freq_order_long.race_log_100m_sd.tiff", nose_freq_order_long.race_log_100m_sd, height=5, width=7, units='in', dpi=300)
+
+nose_freq_order_long.season_log_100m_sd<-ggplot(nose_freq_order_long, aes(x = ndvi_sd_100m, y = log(Count+1), colour = Season, shape = Season)) +
+      facet_wrap(~Order, nrow=2, scales = "free") +  
+      geom_point(alpha = 0.6, size =3) +
+      geom_smooth(method = "lm", se = FALSE, fill= NA, cex=0.5) +
+      theme_classic() +
+      labs(y= "Log(Taxon Count + 1)") +
+      scale_colour_manual(values = c("green", "yellow", "red", "blue")) +
+      scale_shape_manual(values=c(18, 15, 6, 8)) +
+      theme(legend.position = "bottom",
+            panel.spacing = unit(2, "lines"))
+ggsave("nose_freq_order_long.season_log_100m_sd.tiff", nose_freq_order_long.season_log_100m_sd, height=5, width=7, units='in', dpi=300)
+
+nose_freq_order_long.mod_log_100m_sd<-ggplot(nose_freq_order_long, aes(x = ndvi_sd_100m, y = log(Count+1), colour = MoD, shape = MoD)) +
+      facet_wrap(~Order, nrow=2, scales = "free") +  
+      geom_point(alpha = 0.6, size =3) +
+      geom_smooth(method = "lm", se = FALSE, fill= NA, cex=0.5) +
+      theme_classic() +
+      labs(y= "Log(Taxon Count + 1)") +
+      scale_colour_manual(values = c("#7b3294", "#af8dc3", "#7fbf7b", "#1b7837")) +
+      scale_shape_manual(values=c(15, 16, 17, 18)) +
+      theme(legend.position = "bottom",
+            panel.spacing = unit(2, "lines"))
+ggsave("nose_freq_order_long.mod_log_100m_sd.tiff", nose_freq_order_long.mod_log_100m_sd, height=5, width=7, units='in', dpi=300)
+
+nose_freq_order_long.age_log_100m_sd<-ggplot(nose_freq_order_long, aes(x = ndvi_sd_100m, y = log(Count+1), colour = Age)) +
+      facet_wrap(~Order, nrow=2, scales = "free") +  
+      geom_point(alpha = 0.6, size =3) +
+      geom_smooth(method = "lm", se = FALSE, fill= NA, cex=0.5) +
+      theme_classic() +
+      labs(y= "Log(Taxon Count + 1)") +
+      scale_colour_gradient(low = "#b28aff", high = "#00043e") +
+      theme(legend.position = "bottom",
+            panel.spacing = unit(2, "lines"))
+ggsave("nose_freq_order_long.age_log_100m_sd.tiff", nose_freq_order_long.age_log_100m_sd, height=5, width=7, units='in', dpi=300)
+
+nose_freq_order_long.bmi_log_100m_sd<-ggplot(nose_freq_order_long, aes(x = ndvi_sd_100m, y = log(Count+1), colour = BMI)) +
+      facet_wrap(~Order, nrow=2, scales = "free") +  
+      geom_point(alpha = 0.6, size =3) +
+      geom_smooth(method = "lm", se = FALSE, fill= NA, cex=0.5) +
+      theme_classic() +
+      labs(y= "Log(Taxon Count + 1)") +
+      scale_colour_gradient(low = "#00d2ff", high = "#000b42") +
+      theme(legend.position = "bottom",
+            panel.spacing = unit(2, "lines"))
+ggsave("nose_freq_order_long.bmi_log_100m_sd.tiff", nose_freq_order_long.bmi_log_100m_sd, height=5, width=7, units='in', dpi=300)
+```
+
+Rectum Samples & Frequency Data & ndvi_sd_100m
+
+```{r}
+rectum_freq_order_long.sex_log_100m_sd<-ggplot(rectum_freq_order_long, aes(x = ndvi_sd_100m, y = log(Count+1), colour = Sex, shape = Sex)) +
+      facet_wrap(~Order, nrow=2, scales = "free") +  
+      geom_point(alpha = 0.6, size =3) +
+      geom_smooth(method = "lm", se = FALSE, fill= NA, cex=0.5) +
+      theme_classic() +
+      labs(y= "Log(Taxon Count + 1)") +
+      scale_colour_manual(values = c("black", "darkgray")) +
+      theme(legend.position = "bottom",
+            panel.spacing = unit(2, "lines"))
+ggsave("rectum_freq_order_long.sex_log_100m_sd.tiff", rectum_freq_order_long.sex_log_100m_sd, height=5, width=7, units='in', dpi=300)
+
+rectum_freq_order_long.race_log_100m_sd<-ggplot(rectum_freq_order_long, aes(x = ndvi_sd_100m, y = log(Count+1), colour = Race, shape = Race)) +
+      facet_wrap(~Order, nrow=2, scales = "free") +  
+      geom_point(alpha = 0.6, size =3) +
+      geom_smooth(method = "lm", se = FALSE, fill= NA, cex=0.5) +
+      theme_classic() +
+      labs(y= "Log(Taxon Count + 1)") +
+      scale_colour_manual(values = c("orange", "darkred")) +
+      scale_shape_manual(values=c(18, 15)) +
+      theme(legend.position = "bottom",
+            panel.spacing = unit(2, "lines"))
+ggsave("rectum_freq_order_long.race_log_100m_sd.tiff", rectum_freq_order_long.race_log_100m_sd, height=5, width=7, units='in', dpi=300)
+
+rectum_freq_order_long.season_log_100m_sd<-ggplot(rectum_freq_order_long, aes(x = ndvi_sd_100m, y = log(Count+1), colour = Season, shape = Season)) +
+      facet_wrap(~Order, nrow=2, scales = "free") +  
+      geom_point(alpha = 0.6, size =3) +
+      geom_smooth(method = "lm", se = FALSE, fill= NA, cex=0.5) +
+      theme_classic() +
+      labs(y= "Log(Taxon Count + 1)") +
+      scale_colour_manual(values = c("green", "yellow", "red", "blue")) +
+      scale_shape_manual(values=c(18, 15, 6, 8)) +
+      theme(legend.position = "bottom",
+            panel.spacing = unit(2, "lines"))
+ggsave("rectum_freq_order_long.season_log_100m_sd.tiff", rectum_freq_order_long.season_log_100m_sd, height=5, width=7, units='in', dpi=300)
+
+rectum_freq_order_long.mod_log_100m_sd<-ggplot(rectum_freq_order_long, aes(x = ndvi_sd_100m, y = log(Count+1), colour = MoD, shape = MoD)) +
+      facet_wrap(~Order, nrow=2, scales = "free") +  
+      geom_point(alpha = 0.6, size =3) +
+      geom_smooth(method = "lm", se = FALSE, fill= NA, cex=0.5) +
+      theme_classic() +
+      labs(y= "Log(Taxon Count + 1)") +
+      scale_colour_manual(values = c("#7b3294", "#af8dc3", "#7fbf7b", "#1b7837")) +
+      scale_shape_manual(values=c(15, 16, 17, 18)) +
+      theme(legend.position = "bottom",
+            panel.spacing = unit(2, "lines"))
+ggsave("rectum_freq_order_long.mod_log_100m_sd.tiff", rectum_freq_order_long.mod_log_100m_sd, height=5, width=7, units='in', dpi=300)
+
+rectum_freq_order_long.age_log_100m_sd<-ggplot(rectum_freq_order_long, aes(x = ndvi_sd_100m, y = log(Count+1), colour = Age)) +
+      facet_wrap(~Order, nrow=2, scales = "free") +  
+      geom_point(alpha = 0.6, size =3) +
+      geom_smooth(method = "lm", se = FALSE, fill= NA, cex=0.5) +
+      theme_classic() +
+      labs(y= "Log(Taxon Count + 1)") +
+      scale_colour_gradient(low = "#b28aff", high = "#00043e") +
+      theme(legend.position = "bottom",
+            panel.spacing = unit(2, "lines"))
+ggsave("rectum_freq_order_long.age_log_100m_sd.tiff", rectum_freq_order_long.age_log_100m_sd, height=5, width=7, units='in', dpi=300)
+
+rectum_freq_order_long.bmi_log_100m_sd<-ggplot(rectum_freq_order_long, aes(x = ndvi_sd_100m, y = log(Count+1), colour = BMI)) +
+      facet_wrap(~Order, nrow=2, scales = "free") +  
+      geom_point(alpha = 0.6, size =3) +
+      geom_smooth(method = "lm", se = FALSE, fill= NA, cex=0.5) +
+      theme_classic() +
+      labs(y= "Log(Taxon Count + 1)") +
+      scale_colour_gradient(low = "#00d2ff", high = "#000b42") +
+      theme(legend.position = "bottom",
+            panel.spacing = unit(2, "lines"))
+ggsave("rectum_freq_order_long.bmi_log_100m_sd.tiff", rectum_freq_order_long.bmi_log_100m_sd, height=5, width=7, units='in', dpi=300)
+
+```
+
+Mouth Samples & Abundance Data & ndvi_sd_100m
+
+```{r}
+mouth_abund_order_long.sex_log_100m_sd<-ggplot(mouth_abund_order_long, aes(x = ndvi_sd_100m, y = log(Count+1), colour = Sex, shape = Sex)) +
+      facet_wrap(~Order, nrow=2, scales = "free") +  
+      geom_point(alpha = 0.6, size =3) +
+      geom_smooth(method = "lm", se = FALSE, fill= NA, cex=0.5) +
+      theme_classic() +
+      labs(y= "Log(Taxon Count + 1)") +
+      scale_colour_manual(values = c("black", "darkgray")) +
+      theme(legend.position = "bottom",
+            panel.spacing = unit(2, "lines"))
+ggsave("mouth_abund_order_long.sex_log_100m_sd.tiff", mouth_abund_order_long.sex_log_100m_sd, height=5, width=7, units='in', dpi=300)
+
+mouth_abund_order_long.race_log_100m_sd<-ggplot(mouth_abund_order_long, aes(x = ndvi_sd_100m, y = log(Count+1), colour = Race, shape = Race)) +
+      facet_wrap(~Order, nrow=2, scales = "free") +  
+      geom_point(alpha = 0.6, size =3) +
+      geom_smooth(method = "lm", se = FALSE, fill= NA, cex=0.5) +
+      theme_classic() +
+      labs(y= "Log(Taxon Count + 1)") +
+      scale_colour_manual(values = c("orange", "darkred")) +
+      scale_shape_manual(values=c(18, 15)) +
+      theme(legend.position = "bottom",
+            panel.spacing = unit(2, "lines"))
+ggsave("mouth_abund_order_long.race_log_100m_sd.tiff", mouth_abund_order_long.race_log_100m_sd, height=5, width=7, units='in', dpi=300)
+
+mouth_abund_order_long.season_log_100m_sd<-ggplot(mouth_abund_order_long, aes(x = ndvi_sd_100m, y = log(Count+1), colour = Season, shape = Season)) +
+      facet_wrap(~Order, nrow=2, scales = "free") +  
+      geom_point(alpha = 0.6, size =3) +
+      geom_smooth(method = "lm", se = FALSE, fill= NA, cex=0.5) +
+      theme_classic() +
+      labs(y= "Log(Taxon Count + 1)") +
+      scale_colour_manual(values = c("green", "yellow", "red", "blue")) +
+      scale_shape_manual(values=c(18, 15, 6, 8)) +
+      theme(legend.position = "bottom",
+            panel.spacing = unit(2, "lines"))
+ggsave("mouth_abund_order_long.season_log_100m_sd.tiff", mouth_abund_order_long.season_log_100m_sd, height=5, width=7, units='in', dpi=300)
+
+mouth_abund_order_long.mod_log_100m_sd<-ggplot(mouth_abund_order_long, aes(x = ndvi_sd_100m, y = log(Count+1), colour = MoD, shape = MoD)) +
+      facet_wrap(~Order, nrow=2, scales = "free") +  
+      geom_point(alpha = 0.6, size =3) +
+      geom_smooth(method = "lm", se = FALSE, fill= NA, cex=0.5) +
+      theme_classic() +
+      labs(y= "Log(Taxon Count + 1)") +
+      scale_colour_manual(values = c("#7b3294", "#af8dc3", "#7fbf7b", "#1b7837")) +
+      scale_shape_manual(values=c(15, 16, 17, 18)) +
+      theme(legend.position = "bottom",
+            panel.spacing = unit(2, "lines"))
+ggsave("mouth_abund_order_long.mod_log_100m_sd.tiff", mouth_abund_order_long.mod_log_100m_sd, height=5, width=7, units='in', dpi=300)
+
+mouth_abund_order_long.age_log_100m_sd<-ggplot(mouth_abund_order_long, aes(x = ndvi_sd_100m, y = log(Count+1), colour = Age)) +
+      facet_wrap(~Order, nrow=2, scales = "free") +  
+      geom_point(alpha = 0.6, size =3) +
+      geom_smooth(method = "lm", se = FALSE, fill= NA, cex=0.5) +
+      theme_classic() +
+      labs(y= "Log(Taxon Count + 1)") +
+      scale_colour_gradient(low = "#b28aff", high = "#00043e") +
+      theme(legend.position = "bottom",
+            panel.spacing = unit(2, "lines"))
+ggsave("mouth_abund_order_long.age_log_100m_sd.tiff", mouth_abund_order_long.age_log_100m_sd, height=5, width=7, units='in', dpi=300)
+
+mouth_abund_order_long.bmi_log_100m_sd<-ggplot(mouth_abund_order_long, aes(x = ndvi_sd_100m, y = log(Count+1), colour = BMI)) +
+      facet_wrap(~Order, nrow=2, scales = "free") +  
+      geom_point(alpha = 0.6, size =3) +
+      geom_smooth(method = "lm", se = FALSE, fill= NA, cex=0.5) +
+      theme_classic() +
+      labs(y= "Log(Taxon Count + 1)") +
+      scale_colour_gradient(low = "#00d2ff", high = "#000b42") +
+      theme(legend.position = "bottom",
+            panel.spacing = unit(2, "lines"))
+ggsave("mouth_abund_order_long.bmi_log_100m_sd.tiff", mouth_abund_order_long.bmi_log_100m_sd, height=5, width=7, units='in', dpi=300)
+```
+
+Nose Samples & Abundance Data & ndvi_sd_100m
+
+```{r}
+nose_abund_order_long.sex_log_100m_sd<-ggplot(nose_abund_order_long, aes(x = ndvi_sd_100m, y = log(Count+1), colour = Sex, shape = Sex)) +
+      facet_wrap(~Order, nrow=2, scales = "free") +  
+      geom_point(alpha = 0.6, size =3) +
+      geom_smooth(method = "lm", se = FALSE, fill= NA, cex=0.5) +
+      theme_classic() +
+      labs(y= "Log(Taxon Count + 1)") +
+      scale_colour_manual(values = c("black", "darkgray")) +
+      theme(legend.position = "bottom",
+            panel.spacing = unit(2, "lines"))
+ggsave("nose_abund_order_long.sex_log_100m_sd.tiff", nose_abund_order_long.sex_log_100m_sd, height=5, width=7, units='in', dpi=300)
+
+nose_abund_order_long.race_log_100m_sd<-ggplot(nose_abund_order_long, aes(x = ndvi_sd_100m, y = log(Count+1), colour = Race, shape = Race)) +
+      facet_wrap(~Order, nrow=2, scales = "free") +  
+      geom_point(alpha = 0.6, size =3) +
+      geom_smooth(method = "lm", se = FALSE, fill= NA, cex=0.5) +
+      theme_classic() +
+      labs(y= "Log(Taxon Count + 1)") +
+      scale_colour_manual(values = c("orange", "darkred")) +
+      scale_shape_manual(values=c(18, 15)) +
+      theme(legend.position = "bottom",
+            panel.spacing = unit(2, "lines"))
+ggsave("nose_abund_order_long.race_log_100m_sd.tiff", nose_abund_order_long.race_log_100m_sd, height=5, width=7, units='in', dpi=300)
+
+nose_abund_order_long.season_log_100m_sd<-ggplot(nose_abund_order_long, aes(x = ndvi_sd_100m, y = log(Count+1), colour = Season, shape = Season)) +
+      facet_wrap(~Order, nrow=2, scales = "free") +  
+      geom_point(alpha = 0.6, size =3) +
+      geom_smooth(method = "lm", se = FALSE, fill= NA, cex=0.5) +
+      theme_classic() +
+      labs(y= "Log(Taxon Count + 1)") +
+      scale_colour_manual(values = c("green", "yellow", "red", "blue")) +
+      scale_shape_manual(values=c(18, 15, 6, 8)) +
+      theme(legend.position = "bottom",
+            panel.spacing = unit(2, "lines"))
+ggsave("nose_abund_order_long.season_log_100m_sd.tiff", nose_abund_order_long.season_log_100m_sd, height=5, width=7, units='in', dpi=300)
+
+nose_abund_order_long.mod_log_100m_sd<-ggplot(nose_abund_order_long, aes(x = ndvi_sd_100m, y = log(Count+1), colour = MoD, shape = MoD)) +
+      facet_wrap(~Order, nrow=2, scales = "free") +  
+      geom_point(alpha = 0.6, size =3) +
+      geom_smooth(method = "lm", se = FALSE, fill= NA, cex=0.5) +
+      theme_classic() +
+      labs(y= "Log(Taxon Count + 1)") +
+      scale_colour_manual(values = c("#7b3294", "#af8dc3", "#7fbf7b", "#1b7837")) +
+      scale_shape_manual(values=c(15, 16, 17, 18)) +
+      theme(legend.position = "bottom",
+            panel.spacing = unit(2, "lines"))
+ggsave("nose_abund_order_long.mod_log_100m_sd.tiff", nose_abund_order_long.mod_log_100m_sd, height=5, width=7, units='in', dpi=300)
+
+nose_abund_order_long.age_log_100m_sd<-ggplot(nose_abund_order_long, aes(x = ndvi_sd_100m, y = log(Count+1), colour = Age)) +
+      facet_wrap(~Order, nrow=2, scales = "free") +  
+      geom_point(alpha = 0.6, size =3) +
+      geom_smooth(method = "lm", se = FALSE, fill= NA, cex=0.5) +
+      theme_classic() +
+      labs(y= "Log(Taxon Count + 1)") +
+      scale_colour_gradient(low = "#b28aff", high = "#00043e") +
+      theme(legend.position = "bottom",
+            panel.spacing = unit(2, "lines"))
+ggsave("nose_abund_order_long.age_log_100m_sd.tiff", nose_abund_order_long.age_log_100m_sd, height=5, width=7, units='in', dpi=300)
+
+nose_abund_order_long.bmi_log_100m_sd<-ggplot(nose_abund_order_long, aes(x = ndvi_sd_100m, y = log(Count+1), colour = BMI)) +
+      facet_wrap(~Order, nrow=2, scales = "free") +  
+      geom_point(alpha = 0.6, size =3) +
+      geom_smooth(method = "lm", se = FALSE, fill= NA, cex=0.5) +
+      theme_classic() +
+      labs(y= "Log(Taxon Count + 1)") +
+      scale_colour_gradient(low = "#00d2ff", high = "#000b42") +
+      theme(legend.position = "bottom",
+            panel.spacing = unit(2, "lines"))
+ggsave("nose_abund_order_long.bmi_log_100m_sd.tiff", nose_abund_order_long.bmi_log_100m_sd, height=5, width=7, units='in', dpi=300)
+```
+
+Rectum Samples & Abundance Data & ndvi_sd_100m
+
+```{r}
+rectum_abund_order_long.sex_log_100m_sd<-ggplot(rectum_abund_order_long, aes(x = ndvi_sd_100m, y = log(Count+1), colour = Sex, shape = Sex)) +
+      facet_wrap(~Order, nrow=2, scales = "free") +  
+      geom_point(alpha = 0.6, size =3) +
+      geom_smooth(method = "lm", se = FALSE, fill= NA, cex=0.5) +
+      theme_classic() +
+      labs(y= "Log(Taxon Count + 1)") +
+      scale_colour_manual(values = c("black", "darkgray")) +
+      theme(legend.position = "bottom",
+            panel.spacing = unit(2, "lines"))
+ggsave("rectum_abund_order_long.sex_log_100m_sd.tiff", rectum_abund_order_long.sex_log_100m_sd, height=5, width=7, units='in', dpi=300)
+
+rectum_abund_order_long.race_log_100m_sd<-ggplot(rectum_abund_order_long, aes(x = ndvi_sd_100m, y = log(Count+1), colour = Race, shape = Race)) +
+      facet_wrap(~Order, nrow=2, scales = "free") +  
+      geom_point(alpha = 0.6, size =3) +
+      geom_smooth(method = "lm", se = FALSE, fill= NA, cex=0.5) +
+      theme_classic() +
+      labs(y= "Log(Taxon Count + 1)") +
+      scale_colour_manual(values = c("orange", "darkred")) +
+      scale_shape_manual(values=c(18, 15)) +
+      theme(legend.position = "bottom",
+            panel.spacing = unit(2, "lines"))
+ggsave("rectum_abund_order_long.race_log_100m_sd.tiff", rectum_abund_order_long.race_log_100m_sd, height=5, width=7, units='in', dpi=300)
+
+rectum_abund_order_long.season_log_100m_sd<-ggplot(rectum_abund_order_long, aes(x = ndvi_sd_100m, y = log(Count+1), colour = Season, shape = Season)) +
+      facet_wrap(~Order, nrow=2, scales = "free") +  
+      geom_point(alpha = 0.6, size =3) +
+      geom_smooth(method = "lm", se = FALSE, fill= NA, cex=0.5) +
+      theme_classic() +
+      labs(y= "Log(Taxon Count + 1)") +
+      scale_colour_manual(values = c("green", "yellow", "red", "blue")) +
+      scale_shape_manual(values=c(18, 15, 6, 8)) +
+      theme(legend.position = "bottom",
+            panel.spacing = unit(2, "lines"))
+ggsave("rectum_abund_order_long.season_log_100m_sd.tiff", rectum_abund_order_long.season_log_100m_sd, height=5, width=7, units='in', dpi=300)
+
+rectum_abund_order_long.mod_log_100m_sd<-ggplot(rectum_abund_order_long, aes(x = ndvi_sd_100m, y = log(Count+1), colour = MoD, shape = MoD)) +
+      facet_wrap(~Order, nrow=2, scales = "free") +  
+      geom_point(alpha = 0.6, size =3) +
+      geom_smooth(method = "lm", se = FALSE, fill= NA, cex=0.5) +
+      theme_classic() +
+      labs(y= "Log(Taxon Count + 1)") +
+      scale_colour_manual(values = c("#7b3294", "#af8dc3", "#7fbf7b", "#1b7837")) +
+      scale_shape_manual(values=c(15, 16, 17, 18)) +
+      theme(legend.position = "bottom",
+            panel.spacing = unit(2, "lines"))
+ggsave("rectum_abund_order_long.mod_log_100m_sd.tiff", rectum_abund_order_long.mod_log_100m_sd, height=5, width=7, units='in', dpi=300)
+
+rectum_abund_order_long.age_log_100m_sd<-ggplot(rectum_abund_order_long, aes(x = ndvi_sd_100m, y = log(Count+1), colour = Age)) +
+      facet_wrap(~Order, nrow=2, scales = "free") +  
+      geom_point(alpha = 0.6, size =3) +
+      geom_smooth(method = "lm", se = FALSE, fill= NA, cex=0.5) +
+      theme_classic() +
+      labs(y= "Log(Taxon Count + 1)") +
+      scale_colour_gradient(low = "#b28aff", high = "#00043e") +
+      theme(legend.position = "bottom",
+            panel.spacing = unit(2, "lines"))
+ggsave("rectum_abund_order_long.age_log_100m_sd.tiff", rectum_abund_order_long.age_log_100m_sd, height=5, width=7, units='in', dpi=300)
+
+rectum_abund_order_long.bmi_log_100m_sd<-ggplot(rectum_abund_order_long, aes(x = ndvi_sd_100m, y = log(Count+1), colour = BMI)) +
+      facet_wrap(~Order, nrow=2, scales = "free") +  
+      geom_point(alpha = 0.6, size =3) +
+      geom_smooth(method = "lm", se = FALSE, fill= NA, cex=0.5) +
+      theme_classic() +
+      labs(y= "Log(Taxon Count + 1)") +
+      scale_colour_gradient(low = "#00d2ff", high = "#000b42") +
+      theme(legend.position = "bottom",
+            panel.spacing = unit(2, "lines"))
+ggsave("rectum_abund_order_long.bmi_log_100m_sd.tiff", rectum_abund_order_long.bmi_log_100m_sd, height=5, width=7, units='in', dpi=300)
+```
+
+## Figure S15
+
+Upload and clean data
+
+```{r data}
+set.seed(56988)
+
+hpmm_stoten_mouth<-read.delim("~/Desktop/HPMM_STOTEN/Ranalysis/HPMM_STOTEN_output_mouth.txt", h=T)
+hpmm_stoten_nose<-read.delim("~/Desktop/HPMM_STOTEN/Ranalysis/HPMM_STOTEN_output_nose.txt", h=T)
+hpmm_stoten_rectum<-read.delim("~/Desktop/HPMM_STOTEN/Ranalysis/HPMM_STOTEN_output_rectum.txt", h=T)
+
+# remove non community data
+hpmm_stoten_mouth.commdata<-hpmm_stoten_mouth[,c(1:25,28,36:46)]
+hpmm_stoten_nose.commdata<-hpmm_stoten_nose[,c(1:25,28,36:46)]
+hpmm_stoten_rectum.commdata<-hpmm_stoten_rectum[,c(1:25,28,36:46)]
+
+# isolate only the eigenvalues
+hpmm_stoten_mouth.plotdata<-hpmm_stoten_mouth.commdata[,c(9:11)]
+hpmm_stoten_nose.plotdata<-hpmm_stoten_nose.commdata[,c(9:11)]
+hpmm_stoten_rectum.plotdata<-hpmm_stoten_rectum.commdata[,c(9:11)]
+
+#isolate only the environmental variables
+hpmm_stoten_mouth.commdata_env<-hpmm_stoten_mouth.commdata[,c(27:37)]
+hpmm_stoten_nose.commdata_env<-hpmm_stoten_nose.commdata[,c(27:37)]
+hpmm_stoten_rectum.commdata_env<-hpmm_stoten_rectum.commdata[,c(27:37)]
+```
+
+Plot PCOAs
+
+```{r}
+hpmm_stoten_mouth.commdata.pcoa<-ggplot(hpmm_stoten_mouth.commdata,aes(x=Eigvals1, y=Eigvals2, shape=Race, size=faith_pd, colour = Sex)) + geom_point(alpha=0.6) + xlim(-0.3, 0.3) + ylim(-0.3, 0.3) +scale_shape_manual(values=c(16,1), name="Race") + scale_size_continuous(name="Faith's PD") + scale_colour_manual(values = c("black", "orange"), name="Sex") + theme_bw() + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.text=element_text(size=12), axis.title = element_text(size=14)) + labs(x = "Axis 1",y= "Axis 2") + guides(color = guide_legend(order = 2), size = guide_legend(order = 1),shape = guide_legend(order = 3))
+
+hpmm_stoten_nose.commdata.pcoa<-ggplot(hpmm_stoten_nose.commdata,aes(x=Eigvals1, y=Eigvals2, shape=Race, size=faith_pd, colour = Sex)) + geom_point(alpha=0.6) + xlim(-0.4, 0.3) + ylim(-0.4, 0.2) +scale_shape_manual(values=c(16,1), name="Race") + scale_size_continuous(name="Faith's PD") + scale_colour_manual(values = c("black", "orange"), name="Sex") + theme_bw() + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.text=element_text(size=12), axis.title = element_text(size=14)) + labs(x = "Axis 1",y= "Axis 2") + guides(color = guide_legend(order = 2), size = guide_legend(order = 1),shape = guide_legend(order = 3))
+
+hpmm_stoten_rectum.commdata.pcoa<-ggplot(hpmm_stoten_rectum.commdata,aes(x=Eigvals1, y=Eigvals2, shape=Race, size=faith_pd, colour = Sex)) + geom_point(alpha=0.6) + xlim(-0.4, 0.3) + ylim(-0.3, 0.3) +scale_shape_manual(values=c(16,1), name="Race") + scale_size_continuous(name="Faith's PD") + scale_colour_manual(values = c("black", "orange"), name="Sex") + theme_bw() + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.text=element_text(size=12), axis.title = element_text(size=14)) + labs(x = "Axis 1",y= "Axis 2") + guides(color = guide_legend(order = 2), size = guide_legend(order = 1),shape = guide_legend(order = 3))
+```
+
+Identify environmental vectors of importance
+
+```{r}
+#mouth
+hpmm_stoten_mouth.vf<-envfit(hpmm_stoten_mouth.plotdata, hpmm_stoten_mouth.commdata_env, perm=999)
+hpmm_stoten_mouth.arrow_factor<-ordiArrowMul(hpmm_stoten_mouth.vf)
+hpmm_stoten_mouth.spp.scrs<-as.data.frame(scores(hpmm_stoten_mouth.vf, display = "vectors"))*hpmm_stoten_mouth.arrow_factor
+hpmm_stoten_mouth.spp.scrs<-cbind(hpmm_stoten_mouth.spp.scrs, Species = rownames(hpmm_stoten_mouth.spp.scrs), Pvalues = hpmm_stoten_mouth.vf$vectors$pvals, R_squared = hpmm_stoten_mouth.vf$vectors$r)
+
+# select significant similarity to 'plot(vf, p.max =0.1)'
+hpmm_stoten_mouth.spp.scrs_p0.1<-subset(hpmm_stoten_mouth.spp.scrs, Pvalues <0.1)
+View(hpmm_stoten_mouth.spp.scrs_p0.1)
+
+# plot only those with p < 0.1
+mult<-0.25
+hpmm_stoten_mouth.commdata.pcoa.ef<-hpmm_stoten_mouth.commdata.pcoa + geom_segment(aes(x = 0, y = 0, xend = 0.72384206*mult, yend = 0.2519270*mult), colour="grey", size = 0.25, arrow = arrow(length = unit(0.01, "npc"))) + geom_segment(aes(x = 0, y = 0, xend = 0.67216633*mult, yend = 0.3601813*mult), colour="grey", size = 0.25, arrow = arrow(length = unit(0.01, "npc")))  + geom_segment(aes(x = 0, y = 0, xend = -0.09380404*mult, yend = 0.7500000*mult), colour="grey", size = 0.25, arrow = arrow(length = unit(0.01, "npc"))) + annotate("text", x = c(0.7238420*mult+0.01,0.67216633*mult+0.01,-0.09380404*mult+0.01), y=c(0.2519270*mult+0.01,0.3601813*mult+0.01,0.7500000*mult+0.01),  label=c("imperv_100m","imperv_500m", "ndvi_sd_500m"), size=2)
+hpmm_stoten_mouth.commdata.pcoa.ef
+
+#nose
+hpmm_stoten_nose.vf<-envfit(hpmm_stoten_nose.plotdata, hpmm_stoten_nose.commdata_env, perm=999)
+hpmm_stoten_nose.arrow_factor<-ordiArrowMul(hpmm_stoten_nose.vf)
+hpmm_stoten_nose.spp.scrs<-as.data.frame(scores(hpmm_stoten_nose.vf, display = "vectors"))*hpmm_stoten_nose.arrow_factor
+hpmm_stoten_nose.spp.scrs<-cbind(hpmm_stoten_nose.spp.scrs, Species = rownames(hpmm_stoten_nose.spp.scrs), Pvalues = hpmm_stoten_nose.vf$vectors$pvals, R_squared = hpmm_stoten_nose.vf$vectors$r)
+
+# select significant similarity to 'plot(vf, p.max =0.1)'
+hpmm_stoten_nose.spp.scrs_p0.1<-subset(hpmm_stoten_nose.spp.scrs, Pvalues <0.1)
+View(hpmm_stoten_nose.spp.scrs_p0.1)
+
+# plot only those with p < 0.1
+mult<-0.25
+hpmm_stoten_nose.commdata.pcoa.ef<-hpmm_stoten_nose.commdata.pcoa + geom_segment(aes(x = 0, y = 0, xend = -1.4560996*mult, yend = 0.4343531*mult), colour="grey", size = 0.25, arrow = arrow(length = unit(0.01, "npc"))) + geom_segment(aes(x = 0, y = 0, xend = 0.1495144*mult, yend = -1.3147516*mult), colour="grey", size = 0.25, arrow = arrow(length = unit(0.01, "npc"))) + annotate("text", x = c(-1.4560996*mult+0.01,0.1495144*mult+0.01), y=c(0.4343531*mult+0.01,-1.3147516*mult+0.01),  label=c("imperv_100m","imperv_500m"), size=2)
+
+#rectum
+hpmm_stoten_rectum.vf<-envfit(hpmm_stoten_rectum.plotdata, hpmm_stoten_rectum.commdata_env, perm=999)
+hpmm_stoten_rectum.arrow_factor<-ordiArrowMul(hpmm_stoten_rectum.vf)
+hpmm_stoten_rectum.spp.scrs<-as.data.frame(scores(hpmm_stoten_rectum.vf, display = "vectors"))*hpmm_stoten_rectum.arrow_factor
+hpmm_stoten_rectum.spp.scrs<-cbind(hpmm_stoten_rectum.spp.scrs, Species = rownames(hpmm_stoten_rectum.spp.scrs), Pvalues = hpmm_stoten_rectum.vf$vectors$pvals, R_squared = hpmm_stoten_rectum.vf$vectors$r)
+
+# select significant similarity to 'plot(vf, p.max =0.1)'
+hpmm_stoten_rectum.spp.scrs_p0.1<-subset(hpmm_stoten_rectum.spp.scrs, Pvalues <0.1)
+View(hpmm_stoten_rectum.spp.scrs_p0.1)
+
+# plot only those with p < 0.1
+mult<-0.25
+hpmm_stoten_rectum.commdata.pcoa.ef<-hpmm_stoten_rectum.commdata.pcoa + geom_segment(aes(x = 0, y = 0, xend = 0.04649431*mult, yend = -0.9418964*mult), colour="grey", size = 0.25, arrow = arrow(length = unit(0.01, "npc"))) + annotate("text", x = c(0.04649431*mult+0.01), y=c(-0.9418964*mult+0.01), label=c("bird_count"), size=2)
+
+```

@@ -1,0 +1,340 @@
+conda activate ~/qiime2-2019.7
+
+cd ~/Desktop/HPMM_STOTEN
+
+# Taxonomic Composition SILVA (v132-99)
+
+qiime feature-classifier classify-sklearn \
+  --i-classifier silva-132-99-515-806-nb-classifier.qza \
+  --i-reads ~/uchime-dn-out/rep-seqs-nonchimeric-wo-borderline.qza \
+  --o-classification ~/SILVA/HPMM_SILVA_99_taxonomy-nonchimeric-wo-borderline.qza
+
+#### address the "bug" that had whitespaces issues with the taxonomy
+
+qiime tools export \
+  --input-path SILVA/HPMM_SILVA_99_taxonomy-nonchimeric-wo-borderline.qza \
+  --output-path SILVA/taxonomy-with-spaces
+
+qiime metadata tabulate \
+  --m-input-file SILVA/taxonomy-with-spaces/taxonomy.tsv \
+  --o-visualization SILVA/taxonomy-as-metadata.qzv
+
+qiime tools export \
+  --input-path SILVA/taxonomy-as-metadata.qzv \
+  --output-path SILVA/taxonomy-as-metadata
+
+qiime tools import \
+  --type 'FeatureData[Taxonomy]' \
+  --input-path SILVA/taxonomy-as-metadata/metadata.tsv \
+  --output-path SILVA/taxonomy-without-spaces.qza
+
+#### resume analysis
+
+qiime metadata tabulate \
+  --m-input-file ~/SILVA/taxonomy-without-spaces.qza \
+  --o-visualization ~/SILVA/taxonomy-without-spaces.qzv
+
+### Filter out mitochondria and chloroplast reads
+
+qiime taxa filter-table \
+  --i-table uchime-dn-out/Filtered/~_nochimeras_filtered_table.qza \
+  --i-taxonomy SILVA/taxonomy-without-spaces.qza \
+  --p-exclude mitochondria,chloroplast \
+  --o-filtered-table SILVA/HPMM_SILVA_filtered_table-nonchimera-nmnc.qza
+
+qiime feature-table summarize \
+  --i-table SILVA/HPMM_SILVA_filtered_table-nonchimera-nmnc.qza \
+  --o-visualization SILVA/HPMM_SILVA_filtered_table-nonchimera-nmnc.qzv \
+  --m-sample-metadata-file HPMM_STOTEN_metadata.txt
+
+qiime tools export \
+  --input-path SILVA/HPMM_SILVA_filtered_table-nonchimera-nmnc.qza \
+  --output-path SILVA/HPMM_SILVA_filtered_table-nonchimera-nmnc-exported-feature-table
+
+biom convert -i SILVA/HPMM_SILVA_filtered_table-nonchimera-nmnc-exported-feature-table/feature-table.biom -o ~/SILVA/HPMM_SILVA_filtered_table-nonchimera-nmnc-exported-feature-table/feature-table.tsv --to-tsv
+
+### Filter samples by body site
+
+qiime feature-table filter-samples \
+  --i-table SILVA/HPMM_SILVA_filtered_table-nonchimera-nmnc.qza \
+  --m-metadata-file ~/HPMM_STOTEN_metadata.txt \
+  --p-where "Sample_Area='Mouth'" \
+  --o-filtered-table ~/SILVA/BodyMouth/HPMM_SILVA_filtered_table-mouth.qza
+
+qiime feature-table filter-samples \
+  --i-table SILVA/HPMM_SILVA_filtered_table-nonchimera-nmnc.qza \
+  --m-metadata-file ~/HPMM_STOTEN_metadata.txt \
+  --p-where "Sample_Area='Nose'" \
+  --o-filtered-table ~/SILVA/BodyNose/HPMM_SILVA_filtered_table-nose.qza
+  
+qiime feature-table filter-samples \
+  --i-table SILVA/HPMM_SILVA_filtered_table-nonchimera-nmnc.qza \
+  --m-metadata-file ~/HPMM_STOTEN_metadata.txt \
+  --p-where "Sample_Area='Rectum'" \
+  --o-filtered-table ~/SILVA/BodyRectum/HPMM_SILVA_filtered_table-rectum.qza
+
+### Rarefy body site to 1000 reads - after reviewing the alpha rarefaction plots
+  
+## Mouth Samples Taxonomic Compopsition and Core Metric Analyses
+
+qiime feature-table filter-samples \
+  --i-table Data/Mouth/HPMM_SILVA_filtered_table-mouth-less48.qza \
+  --m-metadata-file Data/Mouth/HPMM_STOTEN_metadata_mouth.txt \
+  --o-filtered-table Data/Mouth/HPMM_SILVA_filtered_table-mouth-less48-id-filtered-table.qza
+
+qiime feature-table rarefy \
+  --i-table Data/Mouth/HPMM_SILVA_filtered_table-mouth-less48-id-filtered-table.qza \
+  --p-sampling-depth 1000\
+  --output-dir Data/Mouth/HPMM_SILVA_filtered_table-less48-mouth-rarefy1000
+
+ qiime feature-table summarize \
+  --i-table Data/Mouth/HPMM_SILVA_filtered_table-less48-mouth-rarefy1000/rarefied_table.qza \
+  --o-visualization Data/Mouth/HPMM_SILVA_filtered_table-less48-mouth-rarefy1000/rarefied_table.qzv \
+  --m-sample-metadata-file Data/Mouth/HPMM_STOTEN_metadata_mouth.txt
+
+qiime tools export \
+  --input-path Data/Mouth/HPMM_SILVA_filtered_table-less48-mouth-rarefy1000/rarefied_table.qza \
+  --output-path Data/Mouth/HPMM_SILVA_filtered_table-less48-mouth-rarefy1000/exported-feature-table
+
+biom convert -i Data/Mouth/HPMM_SILVA_filtered_table-less48-mouth-rarefy1000/exported-feature-table/feature-table.biom -o Data/Mouth/HPMM_SILVA_filtered_table-less48-mouth-rarefy1000/exported-feature-table/feature-table.tsv --to-tsv
+
+qiime taxa barplot \
+  --i-table Data/Mouth/HPMM_SILVA_filtered_table-less48-mouth-rarefy1000/rarefied_table.qza \
+  --i-taxonomy Data/HPMM_SILVA_99_taxonomy-nonchimeric-wo-borderline.qza \
+  --m-metadata-file Data/Mouth/HPMM_STOTEN_metadata_mouth.txt \
+  --o-visualization Data/Mouth/HPMM_SILVA_filtered_table-less48-mouth-rarefy1000/taxa-bar-plots.qzv
+
+qiime diversity core-metrics-phylogenetic \
+  --i-phylogeny Data/HPMM_STOTEN_nochimeras_rooted-tree.qza \
+  --i-table Data/Mouth/HPMM_SILVA_filtered_table-less48-mouth-rarefy1000/rarefied_table.qza \
+  --p-sampling-depth 1000 \
+  --m-metadata-file Data/Mouth/HPMM_STOTEN_metadata_mouth.txt \
+  --output-dir Data/Mouth/HPMM_SILVA_filtered_table-mouth-less48-rarefy1000-core-metrics-results
+
+mkdir Data/Mouth/HPMM_SILVA_filtered_table-mouth-less48-rarefy1000-core-metrics-results/adiv-extracted-features
+
+qiime tools extract \
+  --input-path Data/Mouth/HPMM_SILVA_filtered_table-mouth-less48-rarefy1000-core-metrics-results/weighted_unifrac_pcoa_results.qza \
+  --output-path Data/Mouth/HPMM_SILVA_filtered_table-mouth-less48-rarefy1000-core-metrics-results/adiv-extracted-features
+
+qiime tools extract \
+  --input-path Data/Mouth/HPMM_SILVA_filtered_table-mouth-less48-rarefy1000-core-metrics-results/weighted_unifrac_distance_matrix.qza \
+  --output-path Data/Mouth/HPMM_SILVA_filtered_table-mouth-less48-rarefy1000-core-metrics-results/adiv-extracted-features
+  
+qiime tools extract \
+  --input-path Data/Mouth/HPMM_SILVA_filtered_table-mouth-less48-rarefy1000-core-metrics-results/observed_otus_vector.qza \
+  --output-path Data/Mouth/HPMM_SILVA_filtered_table-mouth-less48-rarefy1000-core-metrics-results/adiv-extracted-features
+  
+qiime tools extract \
+  --input-path Data/Mouth/HPMM_SILVA_filtered_table-mouth-less48-rarefy1000-core-metrics-results/faith_pd_vector.qza \
+  --output-path Data/Mouth/HPMM_SILVA_filtered_table-mouth-less48-rarefy1000-core-metrics-results/adiv-extracted-features
+  
+qiime tools extract \
+  --input-path Data/Mouth/HPMM_SILVA_filtered_table-mouth-less48-rarefy1000-core-metrics-results/shannon_vector.qza \
+  --output-path Data/Mouth/HPMM_SILVA_filtered_table-mouth-less48-rarefy1000-core-metrics-results/adiv-extracted-features
+
+qiime tools extract \
+  --input-path Data/Mouth/HPMM_SILVA_filtered_table-mouth-less48-rarefy1000-core-metrics-results/evenness_vector.qza \
+  --output-path Data/Mouth/HPMM_SILVA_filtered_table-mouth-less48-rarefy1000-core-metrics-results/adiv-extracted-features
+  
+## Nose Samples Taxonomic Compopsition and Core Metric Analyses
+
+qiime feature-table filter-samples \
+  --i-table Data/Nose/HPMM_SILVA_filtered_table-nose-less48.qza \
+  --m-metadata-file Data/Nose/HPMM_STOTEN_metadata_nose.txt \
+  --o-filtered-table Data/Nose/HPMM_SILVA_filtered_table-nose-less48-id-filtered-table.qza
+
+qiime feature-table rarefy \
+  --i-table Data/Nose/HPMM_SILVA_filtered_table-nose-less48-id-filtered-table.qza \
+  --p-sampling-depth 1000\
+  --output-dir Data/Nose/HPMM_SILVA_filtered_table-less48-nose-rarefy1000
+
+ qiime feature-table summarize \
+  --i-table Data/Nose/HPMM_SILVA_filtered_table-less48-nose-rarefy1000/rarefied_table.qza \
+  --o-visualization Data/Nose/HPMM_SILVA_filtered_table-less48-nose-rarefy1000/rarefied_table.qzv \
+  --m-sample-metadata-file Data/Nose/HPMM_STOTEN_metadata_nose.txt
+
+qiime tools export \
+  --input-path Data/Nose/HPMM_SILVA_filtered_table-less48-nose-rarefy1000/rarefied_table.qza \
+  --output-path Data/Nose/HPMM_SILVA_filtered_table-less48-nose-rarefy1000/exported-feature-table
+
+biom convert -i Data/Nose/HPMM_SILVA_filtered_table-less48-nose-rarefy1000/exported-feature-table/feature-table.biom -o Data/Nose/HPMM_SILVA_filtered_table-less48-nose-rarefy1000/exported-feature-table/feature-table.tsv --to-tsv
+
+qiime taxa barplot \
+  --i-table Data/Nose/HPMM_SILVA_filtered_table-less48-nose-rarefy1000/rarefied_table.qza \
+  --i-taxonomy Data/HPMM_SILVA_99_taxonomy-nonchimeric-wo-borderline.qza \
+  --m-metadata-file Data/Nose/HPMM_STOTEN_metadata_nose.txt \
+  --o-visualization Data/Nose/HPMM_SILVA_filtered_table-less48-nose-rarefy1000/taxa-bar-plots.qzv
+
+qiime diversity core-metrics-phylogenetic \
+  --i-phylogeny Data/HPMM_STOTEN_nochimeras_rooted-tree.qza \
+  --i-table Data/Nose/HPMM_SILVA_filtered_table-less48-nose-rarefy1000/rarefied_table.qza \
+  --p-sampling-depth 1000 \
+  --m-metadata-file Data/Nose/HPMM_STOTEN_metadata_nose.txt \
+  --output-dir Data/Nose/HPMM_SILVA_filtered_table-nose-less48-rarefy1000-core-metrics-results
+
+mkdir Data/Nose/HPMM_SILVA_filtered_table-nose-less48-rarefy1000-core-metrics-results/adiv-extracted-features
+
+qiime tools extract \
+  --input-path Data/Nose/HPMM_SILVA_filtered_table-nose-less48-rarefy1000-core-metrics-results/weighted_unifrac_pcoa_results.qza \
+  --output-path Data/Nose/HPMM_SILVA_filtered_table-nose-less48-rarefy1000-core-metrics-results/adiv-extracted-features
+
+qiime tools extract \
+  --input-path Data/Nose/HPMM_SILVA_filtered_table-nose-less48-rarefy1000-core-metrics-results/weighted_unifrac_distance_matrix.qza \
+  --output-path Data/Nose/HPMM_SILVA_filtered_table-nose-less48-rarefy1000-core-metrics-results/adiv-extracted-features
+  
+qiime tools extract \
+  --input-path Data/Nose/HPMM_SILVA_filtered_table-nose-less48-rarefy1000-core-metrics-results/observed_otus_vector.qza \
+  --output-path Data/Nose/HPMM_SILVA_filtered_table-nose-less48-rarefy1000-core-metrics-results/adiv-extracted-features
+  
+qiime tools extract \
+  --input-path Data/Nose/HPMM_SILVA_filtered_table-nose-less48-rarefy1000-core-metrics-results/faith_pd_vector.qza \
+  --output-path Data/Nose/HPMM_SILVA_filtered_table-nose-less48-rarefy1000-core-metrics-results/adiv-extracted-features
+  
+qiime tools extract \
+  --input-path Data/Nose/HPMM_SILVA_filtered_table-nose-less48-rarefy1000-core-metrics-results/shannon_vector.qza \
+  --output-path Data/Nose/HPMM_SILVA_filtered_table-nose-less48-rarefy1000-core-metrics-results/adiv-extracted-features
+
+qiime tools extract \
+  --input-path Data/Nose/HPMM_SILVA_filtered_table-nose-less48-rarefy1000-core-metrics-results/evenness_vector.qza \
+  --output-path Data/Nose/HPMM_SILVA_filtered_table-nose-less48-rarefy1000-core-metrics-results/adiv-extracted-features
+  
+## Rectum Samples Taxonomic Compopsition and Core Metric Analyses
+
+qiime feature-table filter-samples \
+  --i-table Data/Rectum/HPMM_SILVA_filtered_table-rectum-less48.qza \
+  --m-metadata-file Data/Rectum/HPMM_STOTEN_metadata_rectum.txt \
+  --o-filtered-table Data/Rectum/HPMM_SILVA_filtered_table-rectum-less48-id-filtered-table.qza
+
+qiime feature-table rarefy \
+  --i-table Data/Rectum/HPMM_SILVA_filtered_table-rectum-less48-id-filtered-table.qza \
+  --p-sampling-depth 1000\
+  --output-dir Data/Rectum/HPMM_SILVA_filtered_table-less48-rectum-rarefy1000
+
+ qiime feature-table summarize \
+  --i-table Data/Rectum/HPMM_SILVA_filtered_table-less48-rectum-rarefy1000/rarefied_table.qza \
+  --o-visualization Data/Rectum/HPMM_SILVA_filtered_table-less48-rectum-rarefy1000/rarefied_table.qzv \
+  --m-sample-metadata-file Data/Rectum/HPMM_STOTEN_metadata_rectum.txt
+
+qiime tools export \
+  --input-path Data/Rectum/HPMM_SILVA_filtered_table-less48-rectum-rarefy1000/rarefied_table.qza \
+  --output-path Data/Rectum/HPMM_SILVA_filtered_table-less48-rectum-rarefy1000/exported-feature-table
+
+biom convert -i Data/Rectum/HPMM_SILVA_filtered_table-less48-rectum-rarefy1000/exported-feature-table/feature-table.biom -o Data/Rectum/HPMM_SILVA_filtered_table-less48-rectum-rarefy1000/exported-feature-table/feature-table.tsv --to-tsv
+
+qiime taxa barplot \
+  --i-table Data/Rectum/HPMM_SILVA_filtered_table-less48-rectum-rarefy1000/rarefied_table.qza \
+  --i-taxonomy Data/HPMM_SILVA_99_taxonomy-nonchimeric-wo-borderline.qza \
+  --m-metadata-file Data/Rectum/HPMM_STOTEN_metadata_rectum.txt \
+  --o-visualization Data/Rectum/HPMM_SILVA_filtered_table-less48-rectum-rarefy1000/taxa-bar-plots.qzv
+
+qiime diversity core-metrics-phylogenetic \
+  --i-phylogeny Data/HPMM_STOTEN_nochimeras_rooted-tree.qza \
+  --i-table Data/Rectum/HPMM_SILVA_filtered_table-less48-rectum-rarefy1000/rarefied_table.qza \
+  --p-sampling-depth 1000 \
+  --m-metadata-file Data/Rectum/HPMM_STOTEN_metadata_rectum.txt \
+  --output-dir Data/Rectum/HPMM_SILVA_filtered_table-rectum-less48-rarefy1000-core-metrics-results
+
+mkdir Data/Rectum/HPMM_SILVA_filtered_table-rectum-less48-rarefy1000-core-metrics-results/adiv-extracted-features
+
+qiime tools extract \
+  --input-path Data/Rectum/HPMM_SILVA_filtered_table-rectum-less48-rarefy1000-core-metrics-results/weighted_unifrac_pcoa_results.qza \
+  --output-path Data/Rectum/HPMM_SILVA_filtered_table-rectum-less48-rarefy1000-core-metrics-results/adiv-extracted-features
+
+qiime tools extract \
+  --input-path Data/Rectum/HPMM_SILVA_filtered_table-rectum-less48-rarefy1000-core-metrics-results/weighted_unifrac_distance_matrix.qza \
+  --output-path Data/Rectum/HPMM_SILVA_filtered_table-rectum-less48-rarefy1000-core-metrics-results/adiv-extracted-features
+  
+qiime tools extract \
+  --input-path Data/Rectum/HPMM_SILVA_filtered_table-rectum-less48-rarefy1000-core-metrics-results/observed_otus_vector.qza \
+  --output-path Data/Rectum/HPMM_SILVA_filtered_table-rectum-less48-rarefy1000-core-metrics-results/adiv-extracted-features
+  
+qiime tools extract \
+  --input-path Data/Rectum/HPMM_SILVA_filtered_table-rectum-less48-rarefy1000-core-metrics-results/faith_pd_vector.qza \
+  --output-path Data/Rectum/HPMM_SILVA_filtered_table-rectum-less48-rarefy1000-core-metrics-results/adiv-extracted-features
+  
+qiime tools extract \
+  --input-path Data/Rectum/HPMM_SILVA_filtered_table-rectum-less48-rarefy1000-core-metrics-results/shannon_vector.qza \
+  --output-path Data/Rectum/HPMM_SILVA_filtered_table-rectum-less48-rarefy1000-core-metrics-results/adiv-extracted-features
+
+qiime tools extract \
+  --input-path Data/Rectum/HPMM_SILVA_filtered_table-rectum-less48-rarefy1000-core-metrics-results/evenness_vector.qza \
+  --output-path Data/Rectum/HPMM_SILVA_filtered_table-rectum-less48-rarefy1000-core-metrics-results/adiv-extracted-features
+  
+## ANCOM
+
+### Predictor variable: ndvi_sd_100m_qrt
+
+## Mouth Samples
+
+qiime composition add-pseudocount \
+  --i-table  Data/Mouth/HPMM_SILVA_filtered_table-less48-mouth-rarefy1000/rarefied_table.qza \
+  --o-composition-table Data/Mouth/ancom/HPMM_SILVA_filtered_table-mouth-less48-rarefy1000_comp-table.qza
+
+qiime composition ancom \
+  --i-table Data/Mouth/ancom/HPMM_SILVA_filtered_table-mouth-less48-rarefy1000_comp-table.qza \
+  --m-metadata-file Data/Mouth/HPMM_STOTEN_metadata_mouth.txt \
+  --m-metadata-column ndvi_sd_100m_qrt \
+  --o-visualization Data/Mouth/ancom/ancom-ndvi_sd_100m_qrt.qzv
+
+## Nose Samples
+
+qiime composition add-pseudocount \
+  --i-table  Data/Nose/HPMM_SILVA_filtered_table-less48-nose-rarefy1000/rarefied_table.qza \
+  --o-composition-table Data/Nose/ancom/HPMM_SILVA_filtered_table-nose-less48-rarefy1000_comp-table.qza
+
+qiime composition ancom \
+  --i-table Data/Nose/ancom/HPMM_SILVA_filtered_table-nose-less48-rarefy1000_comp-table.qza \
+  --m-metadata-file Data/Nose/HPMM_STOTEN_metadata_nose.txt \
+  --m-metadata-column ndvi_sd_100m_qrt \
+  --o-visualization Data/Nose/ancom/ancom-ndvi_sd_100m_qrt.qzv
+
+## Rectum Samples
+
+qiime composition add-pseudocount \
+  --i-table  Data/Rectum/HPMM_SILVA_filtered_table-less48-rectum-rarefy1000/rarefied_table.qza \
+  --o-composition-table Data/Rectum/ancom/HPMM_SILVA_filtered_table-rectum-less48-rarefy1000_comp-table.qza
+
+qiime composition ancom \
+  --i-table Data/Rectum/ancom/HPMM_SILVA_filtered_table-rectum-less48-rarefy1000_comp-table.qza \
+  --m-metadata-file Data/Rectum/HPMM_STOTEN_metadata_rectum.txt \
+  --m-metadata-column ndvi_sd_100m_qrt \
+  --o-visualization Data/Rectum/ancom/ancom-ndvi_sd_100m_qrt.qzv
+
+### Predictor variable: ndvi_m_100m_qrt
+
+## Mouth Samples
+
+qiime composition add-pseudocount \
+  --i-table  Data/Mouth/HPMM_SILVA_filtered_table-less48-mouth-rarefy1000/rarefied_table.qza \
+  --o-composition-table Data/Mouth/ancom/HPMM_SILVA_filtered_table-mouth-less48-rarefy1000_comp-table.qza
+
+qiime composition ancom \
+  --i-table Data/Mouth/ancom/HPMM_SILVA_filtered_table-mouth-less48-rarefy1000_comp-table.qza \
+  --m-metadata-file Data/Mouth/HPMM_STOTEN_metadata_mouth.txt \
+  --m-metadata-column ndvi_m_100m_qrt \
+  --o-visualization Data/Mouth/ancom/ancom-ndvi_m_100m_qrt.qzv
+
+## Nose Samples
+
+qiime composition add-pseudocount \
+  --i-table  Data/Nose/HPMM_SILVA_filtered_table-less48-nose-rarefy1000/rarefied_table.qza \
+  --o-composition-table Data/Nose/ancom/HPMM_SILVA_filtered_table-nose-less48-rarefy1000_comp-table.qza
+
+qiime composition ancom \
+  --i-table Data/Nose/ancom/HPMM_SILVA_filtered_table-nose-less48-rarefy1000_comp-table.qza \
+  --m-metadata-file Data/Nose/HPMM_STOTEN_metadata_nose.txt \
+  --m-metadata-column ndvi_m_100m_qrt \
+  --o-visualization Data/Nose/ancom/ancom-ndvi_m_100m_qrt.qzv
+
+## Rectum Samples
+
+qiime composition add-pseudocount \
+  --i-table  Data/Rectum/HPMM_SILVA_filtered_table-less48-rectum-rarefy1000/rarefied_table.qza \
+  --o-composition-table Data/Rectum/ancom/HPMM_SILVA_filtered_table-rectum-less48-rarefy1000_comp-table.qza
+
+qiime composition ancom \
+  --i-table Data/Rectum/ancom/HPMM_SILVA_filtered_table-rectum-less48-rarefy1000_comp-table.qza \
+  --m-metadata-file Data/Rectum/HPMM_STOTEN_metadata_rectum.txt \
+  --m-metadata-column ndvi_m_100m_qrt \
+  --o-visualization Data/Rectum/ancom/ancom-ndvi_m_100m_qrt.qzv
